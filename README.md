@@ -1,2 +1,2 @@
-# SpiritualAI
+# SoulGpt
 An AI for religion
