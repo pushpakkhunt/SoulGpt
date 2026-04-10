@@ -1,2 +1,2 @@
-# SpritualAI
+# SpiritualAI
 An AI for religion
