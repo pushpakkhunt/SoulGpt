@@ -1,3 +1,8 @@
-// Convenience re-exports for individual model imports
-const { User, Conversation, PrayerLog, connectDB } = require('./index');
-module.exports = User;
+/* ============================================================
+   SoulGPT — User Model Re-export
+   File: backend/src/models/User.js
+   ============================================================ */
+
+   const { User } = require('./index');
+
+   module.exports = User;
