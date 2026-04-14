@@ -3,36 +3,41 @@
    File: frontend/src/main.js
    ============================================================ */
 
-   import { Sidebar }      from './components/Sidebar.js';
-   import { Chat }         from './components/Chat.js';
-   import { AudioPlayer }  from './components/AudioPlayer.js';
-   import { AuthModal }    from './components/AuthModal.js';
-   import { api }          from './lib/api.js';
+   import { Sidebar } from './components/Sidebar.js';
+   import { Chat } from './components/Chat.js';
+   import { AudioPlayer } from './components/AudioPlayer.js';
+   import { AuthModal } from './components/AuthModal.js';
+   import { api } from './lib/api.js';
    import { detectIntent } from './lib/utils.js';
    
-   // ── Known prayers data (mirrors backend) ─────────────────
+   // ── Known prayers data (fallback only) ──────────────────────
    const PRAYERS = {
-     'hanuman chalisa': { title: 'Hanuman Chalisa', tradition: 'Hindu', durationSecs: 503 },
-     'gayatri mantra': { title: 'Gayatri Mantra', tradition: 'Hindu', durationSecs: 255 },
-     'om namah shivaya': { title: 'Om Namah Shivaya', tradition: 'Hindu', durationSecs: 360 },
-     'ganesh aarti': { title: 'Ganesh Aarti', tradition: 'Hindu', durationSecs: 190 },
-     'surah al fatiha': { title: 'Surah Al-Fatiha', tradition: 'Islam', durationSecs: 72 },
-     'ayatul kursi': { title: 'Ayatul Kursi', tradition: 'Islam', durationSecs: 150 },
-     "lord's prayer": { title: "Lord's Prayer", tradition: 'Christian', durationSecs: 105 },
-     'navkar mantra': { title: 'Navkar Mantra', tradition: 'Jain', durationSecs: 120 },
-     'waheguru': { title: 'Waheguru Simran', tradition: 'Sikh', durationSecs: 300 },
-     'japji sahib': { title: 'Japji Sahib', tradition: 'Sikh', durationSecs: 720 },
+     'hanuman chalisa':  { key: 'hanuman-chalisa',  title: 'Hanuman Chalisa',  tradition: 'Hindu', durationSecs: 503 },
+     'gayatri mantra':   { key: 'gayatri-mantra',   title: 'Gayatri Mantra',   tradition: 'Hindu', durationSecs: 255 },
+     'om namah shivaya': { key: 'om-namah-shivaya', title: 'Om Namah Shivaya', tradition: 'Hindu', durationSecs: 360 },
+     'ganesh aarti':     { key: 'ganesh-aarti',     title: 'Ganesh Aarti',     tradition: 'Hindu', durationSecs: 190 },
+     'surah al fatiha':  { key: 'surah-al-fatiha',  title: 'Surah Al-Fatiha',  tradition: 'Islam', durationSecs: 72 },
+     'al fatiha':        { key: 'surah-al-fatiha',  title: 'Surah Al-Fatiha',  tradition: 'Islam', durationSecs: 72 },
+     'ayatul kursi':     { key: 'ayatul-kursi',     title: 'Ayatul Kursi',     tradition: 'Islam', durationSecs: 150 },
+     "lord's prayer":    { key: 'lords-prayer',     title: "Lord's Prayer",    tradition: 'Christian', durationSecs: 105 },
+     'lords prayer':     { key: 'lords-prayer',     title: "Lord's Prayer",    tradition: 'Christian', durationSecs: 105 },
+     'navkar mantra':    { key: 'navkar-mantra',    title: 'Navkar Mantra',    tradition: 'Jain', durationSecs: 120 },
+     'waheguru':         { key: 'waheguru-simran',  title: 'Waheguru Simran',  tradition: 'Sikh', durationSecs: 300 },
+     'waheguru simran':  { key: 'waheguru-simran',  title: 'Waheguru Simran',  tradition: 'Sikh', durationSecs: 300 },
+     'japji sahib':      { key: 'japji-sahib',      title: 'Japji Sahib',      tradition: 'Sikh', durationSecs: 720 },
    };
    
-   // ── State ────────────────────────────────────────────────
+   // ── State ───────────────────────────────────────────────────
    let currentConversationId = null;
    let currentTradition = 'all';
    let currentUser = null;
-let guestMessageCount = parseInt(localStorage.getItem('guest_msg_count') || '0');
+   let guestMessageCount = parseInt(localStorage.getItem('guest_msg_count') || '0', 10);
    
-   // ── Components ───────────────────────────────────────────
+   // ── Components ──────────────────────────────────────────────
    const sidebar = new Sidebar({
-     onTraditionChange: (t) => { currentTradition = t; },
+     onTraditionChange: (t) => {
+       currentTradition = t;
+     },
      onNewChat: () => {
        currentConversationId = null;
        chat.clearMessages();
@@ -60,7 +65,7 @@ let guestMessageCount = parseInt(localStorage.getItem('guest_msg_count') || '0')
      },
    });
    
-   // ── Mount ────────────────────────────────────────────────
+   // ── Mount ───────────────────────────────────────────────────
    const app = document.getElementById('app');
    app.appendChild(sidebar.render());
    app.appendChild(chat.render());
@@ -71,7 +76,7 @@ let guestMessageCount = parseInt(localStorage.getItem('guest_msg_count') || '0')
      authModal.open('login');
    });
    
-   // ── Auth (try to restore session) ───────────────────────
+   // ── Restore session if logged in ────────────────────────────
    (async () => {
      try {
        const data = await api.getMe();
@@ -81,19 +86,19 @@ let guestMessageCount = parseInt(localStorage.getItem('guest_msg_count') || '0')
        const convs = await api.getConversations();
        sidebar.loadHistory(convs.conversations || []);
      } catch {
-       // Guest mode — that's fine
+       // Guest mode
      }
    })();
    
-   // ── Handle Send ──────────────────────────────────────────
+   // ── Handle Send ─────────────────────────────────────────────
    async function handleSend(text) {
      chat.setLoading(true);
      chat.appendUserMessage(text);
      chat.appendTypingIndicator();
    
      try {
-       // Optimistic prayer detection for instant feedback
        const intent = detectIntent(text);
+       console.log('Intent:', intent);
    
        if (intent.type === 'prayer') {
          const key = intent.key;
@@ -101,43 +106,68 @@ let guestMessageCount = parseInt(localStorage.getItem('guest_msg_count') || '0')
    
          chat.removeTypingIndicator();
          chat.appendBotMessage({
-           text: `I'll play *${prayer.title}* for you now. 🙏\n\nThis sacred ${prayer.tradition} prayer has been chanted for centuries. Duration: ${formatDur(prayer.durationSecs)}.\n\nBreath deeply and simply receive.`,
+           text: `I'll play *${prayer.title}* for you now. 🙏\n\nThis sacred ${prayer.tradition} prayer has been chanted for centuries.\n\nBreathe deeply and simply receive.`,
            tradition: prayer.tradition,
            cite: null,
          });
    
-         setTimeout(() => {
-           player.open({ ...prayer, audioUrl: null });
+         setTimeout(async () => {
+           try {
+             const streamData = await api.getPrayerStream(prayer.key);
+             console.log('Prayer stream data:', streamData);
+   
+             player.open({
+               title: streamData.title,
+               tradition: streamData.tradition,
+               audioUrl: streamData.audioUrl,
+             });
+           } catch (err) {
+             console.error('Failed to fetch prayer stream:', err);
+   
+             // Fallback: simulate only if backend stream fetch fails
+             player.open({
+               title: prayer.title,
+               tradition: prayer.tradition,
+               durationSecs: prayer.durationSecs,
+               audioUrl: null,
+             });
+           }
          }, 400);
-} else {
-  // Guest limit check
-  if (!currentUser) {
-    guestMessageCount++;
-    localStorage.setItem('guest_msg_count', guestMessageCount);
-    if (guestMessageCount > 5) {
-      chat.removeTypingIndicator();
-      window.dispatchEvent(new CustomEvent('openAuthModal'));
-      chat.appendBotMessage({
-        text: 'You have used your 5 free questions. Please sign in to continue your spiritual journey.',
-        tradition: null,
-        cite: null,
-        plain: true,
-      });
-      chat.setLoading(false);
-      return;
-    }
-  }
-
-  const res = await api.sendMessage(text, currentTradition, 'en', currentConversationId);
-  currentConversationId = res.conversationId;
-
-  chat.removeTypingIndicator();
-  chat.appendBotMessage({
-    text: res.message,
-    tradition: res.tradition,
-    cite: res.citation,
-  });
-}
+       } else {
+         if (!currentUser) {
+           guestMessageCount += 1;
+           localStorage.setItem('guest_msg_count', guestMessageCount);
+   
+           if (guestMessageCount > 5) {
+             chat.removeTypingIndicator();
+             window.dispatchEvent(new CustomEvent('openAuthModal'));
+             chat.appendBotMessage({
+               text: 'You have used your 5 free questions. Please sign in to continue your spiritual journey.',
+               tradition: null,
+               cite: null,
+               plain: true,
+             });
+             chat.setLoading(false);
+             return;
+           }
+         }
+   
+         const res = await api.sendMessage(
+           text,
+           currentTradition,
+           'en',
+           currentConversationId
+         );
+   
+         currentConversationId = res.conversationId;
+   
+         chat.removeTypingIndicator();
+         chat.appendBotMessage({
+           text: res.message,
+           tradition: res.tradition,
+           cite: res.citation,
+         });
+       }
      } catch (err) {
        chat.removeTypingIndicator();
    
@@ -160,7 +190,7 @@ let guestMessageCount = parseInt(localStorage.getItem('guest_msg_count') || '0')
          msg.toLowerCase().includes('fetch');
    
        const tip = network
-         ? '\n\n*Tip:* Start the API from the `backend` folder: `npm run dev` (port 3001). You also need a `.env` there with `MONGODB_URI`, `JWT_SECRET`, and `ANTHROPIC_API_KEY`.'
+         ? '\n\n*Tip:* Start the API from the `backend` folder: `npm run dev` (port 3001).'
          : '';
    
        chat.appendBotMessage({
@@ -196,11 +226,7 @@ let guestMessageCount = parseInt(localStorage.getItem('guest_msg_count') || '0')
        }
    
        currentConversationId = idOrText;
-     } catch {
-       // silent
+     } catch (err) {
+       console.error('Failed to load conversation:', err);
      }
-   }
-   
-   function formatDur(secs) {
-     return `${Math.floor(secs / 60)}:${String(secs % 60).padStart(2, '0')}`;
    }
