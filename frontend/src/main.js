@@ -152,9 +152,12 @@
            }
          }
    
+         const safeTradition = String(currentTradition || 'all').toLowerCase();
+         console.log('Sending tradition:', safeTradition);
+   
          const res = await api.sendMessage(
            text,
-           currentTradition,
+           safeTradition,
            'en',
            currentConversationId
          );
