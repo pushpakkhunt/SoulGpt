@@ -4,10 +4,11 @@
    ============================================================ */
 
    export class Sidebar {
-    constructor({ onTraditionChange, onNewChat, onHistoryClick }) {
+    constructor({ onTraditionChange, onNewChat, onHistoryClick, onDeleteHistory }) {
       this.onTraditionChange = onTraditionChange;
       this.onNewChat = onNewChat;
       this.onHistoryClick = onHistoryClick;
+      this.onDeleteHistory = onDeleteHistory;
       this.activeTradition = 'all';
       this.currentUser = null;
     }
@@ -45,7 +46,6 @@
         <div class="sb-bottom">
           <button class="user-row guest-clickable" id="userRow" type="button">
             <div class="avatar" id="userAvatar">?</div>
-  
             <div class="u-info">
               <div class="u-name" id="userName">Guest</div>
               <div class="u-plan" id="userPlan">Sign in to save chats</div>
@@ -67,7 +67,6 @@
         btn.addEventListener('click', () => {
           el.querySelectorAll('.r-btn').forEach((b) => b.classList.remove('active'));
           btn.classList.add('active');
-  
           this.activeTradition = btn.dataset.tradition || 'all';
           this.onTraditionChange?.(this.activeTradition);
         });
@@ -98,20 +97,19 @@
       localStorage.removeItem('soulgpt_token');
       localStorage.removeItem('soulgpt_user');
       sessionStorage.clear();
-  
       this.updateUser(null);
       window.location.reload();
     }
   
     _traditionsHTML() {
       const traditions = [
-        { id: 'all',       icon: '🌍', label: 'All traditions' },
-        { id: 'hindu',     icon: '🕉️', label: 'Hindu' },
-        { id: 'islam',     icon: '☪️', label: 'Islam' },
+        { id: 'all', icon: '🌍', label: 'All traditions' },
+        { id: 'hindu', icon: '🕉️', label: 'Hindu' },
+        { id: 'islam', icon: '☪️', label: 'Islam' },
         { id: 'christian', icon: '✝️', label: 'Christian' },
-        { id: 'jain',      icon: '🔷', label: 'Jain' },
-        { id: 'sikh',      icon: '☬',  label: 'Sikh' },
-        { id: 'buddhist',  icon: '☸️', label: 'Buddhist' },
+        { id: 'jain', icon: '🔷', label: 'Jain' },
+        { id: 'sikh', icon: '☬', label: 'Sikh' },
+        { id: 'buddhist', icon: '☸️', label: 'Buddhist' },
       ];
   
       return traditions
@@ -129,56 +127,50 @@
   
     updateUser(user) {
       this.currentUser = user || null;
-    
+  
       const avatar = document.getElementById('userAvatar');
       const name = document.getElementById('userName');
       const plan = document.getElementById('userPlan');
       const userRow = document.getElementById('userRow');
       const signOutBtn = document.getElementById('signOutBtn');
-    
+  
       if (!avatar || !name || !plan || !userRow || !signOutBtn) return;
-    
+  
       if (user) {
-        // ✅ Use name OR fallback to email username
         const baseName =
           user.name?.trim() ||
           (user.email ? user.email.split('@')[0] : 'User');
-    
-        // ✅ Better initials
+  
         const initials = baseName
           .split(' ')
           .map((n) => n[0])
           .join('')
           .toUpperCase()
           .slice(0, 2);
-    
+  
         avatar.textContent = initials;
-    
-        // ✅ Show clean name
         name.textContent = baseName;
-    
         plan.textContent =
           user.plan === 'premium'
             ? '✦ Premium · Unlimited'
             : `Free · ${user.remainingToday ?? 5}/5 left today`;
-    
+  
         userRow.classList.remove('guest-clickable');
         userRow.disabled = true;
         userRow.style.cursor = 'default';
-    
         signOutBtn.style.display = 'block';
       } else {
         avatar.textContent = '?';
         name.textContent = 'Guest';
         plan.textContent = 'Sign in to save chats';
-    
+  
         userRow.classList.add('guest-clickable');
         userRow.disabled = false;
         userRow.style.cursor = 'pointer';
-    
         signOutBtn.style.display = 'none';
       }
     }
+  
     loadHistory(conversations) {
       const list = document.getElementById('historyList');
       if (!list) return;
@@ -194,8 +186,11 @@
           const title = c.title || 'Untitled conversation';
   
           return `
-            <div class="h-item ${i === 0 ? 'cur' : ''}" data-id="${id}">
-              ${title}
+            <div class="h-row ${i === 0 ? 'cur' : ''}" data-id="${id}">
+              <div class="h-item" data-id="${id}" title="${title}">
+                ${title}
+              </div>
+              <button class="h-del" data-id="${id}" type="button" title="Delete chat">✕</button>
             </div>
           `;
         })
@@ -203,10 +198,22 @@
   
       list.querySelectorAll('.h-item').forEach((item) => {
         item.addEventListener('click', () => {
+          list.querySelectorAll('.h-row').forEach((row) => row.classList.remove('cur'));
+          item.closest('.h-row')?.classList.add('cur');
+  
           const conversationId = item.dataset.id;
-          console.log('Clicked conversation id:', conversationId);
           if (conversationId) {
             this.onHistoryClick?.(conversationId);
+          }
+        });
+      });
+  
+      list.querySelectorAll('.h-del').forEach((btn) => {
+        btn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          const conversationId = btn.dataset.id;
+          if (conversationId) {
+            this.onDeleteHistory?.(conversationId);
           }
         });
       });
