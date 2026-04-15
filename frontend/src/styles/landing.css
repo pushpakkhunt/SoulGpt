@@ -849,3 +849,27 @@ body.landing-body {
     right: 8px;
   }
 }
+
+.orb-core {
+    animation: orbPulse 6s ease-in-out infinite, orbGlow 8s ease-in-out infinite;
+  }
+  
+  @keyframes orbGlow {
+    0%, 100% {
+      filter: brightness(1);
+    }
+    50% {
+      filter: brightness(1.14);
+    }
+  }
+
+  .glass-card:hover {
+    transform: translateY(-4px);
+    border-color: rgba(200, 169, 110, 0.22);
+  }
+  
+  .lp-btn,
+  .glass-card,
+  .floating-card {
+    transition: transform 0.25s ease, border-color 0.25s ease, box-shadow 0.25s ease;
+  }
