@@ -17,7 +17,7 @@
        el.className = 'main';
        el.innerHTML = `
          <div class="topbar">
-           <div class="tb-title" id="tbTitle">Ask anything spiritual...</div>
+           <div class="tb-title" id="tbTitle">Ask spiritual questions. Get wisdom from real scriptures.</div>
            <div class="tb-right">
              <button class="lang active" data-lang="en">EN</button>
              <button class="lang" data-lang="hi">हिं</button>
@@ -34,7 +34,7 @@
            <div class="input-wrap">
              <textarea
                id="uinput"
-               placeholder="Ask a question or say 'Play Hanuman Chalisa'..."
+               placeholder="Ask about faith, anxiety, purpose, prayer... or say 'Play Hanuman Chalisa'"
                rows="1"
              ></textarea>
              <button class="send" id="sendBtn" aria-label="Send message">
@@ -44,7 +44,7 @@
              </button>
            </div>
            <div class="hint">
-             SoulGPT cites verified scriptures — not AI hallucinations &nbsp;·&nbsp; Free: 5 questions/day
+             Grounded in real spiritual traditions &nbsp;·&nbsp; Free: 5 questions/day
            </div>
          </div>
        `;
@@ -278,33 +278,33 @@
      }
    
      _welcomeHTML() {
-       return `
-         <div class="welcome" id="welcome">
-           <div class="w-sym">✦</div>
-           <div class="w-title">What wisdom are you seeking?</div>
-           <div class="w-sub">
-             Ask any life question and receive answers from the world's greatest spiritual traditions.
-             Or say "Play Hanuman Chalisa."
-           </div>
-           <div class="suggestions">
-             <div class="sug">
-               <span class="sug-icon">🕉️</span>
-               <div class="sug-text">What does the Bhagavad Gita say about finding purpose?</div>
-             </div>
-             <div class="sug">
-               <span class="sug-icon">🎵</span>
-               <div class="sug-text">Play Hanuman Chalisa for me</div>
-             </div>
-             <div class="sug">
-               <span class="sug-icon">☪️</span>
-               <div class="sug-text">What does Islam say about anxiety and worry?</div>
-             </div>
-             <div class="sug">
-               <span class="sug-icon">✝️</span>
-               <div class="sug-text">Give me a Bible verse for when I feel lost</div>
-             </div>
-           </div>
-         </div>
-       `;
+      return `
+        <div class="welcome" id="welcome">
+          <div class="w-sym">✦</div>
+          <div class="w-title">Ask spiritual questions. Receive wisdom grounded in real traditions.</div>
+          <div class="w-sub">
+            Explore peace, purpose, anxiety, prayer, scripture, and meaning across Hindu, Islamic,
+            Christian, Buddhist, Sikh, and Jain teachings.
+          </div>
+          <div class="suggestions">
+            <div class="sug">
+              <span class="sug-icon">🕉️</span>
+              <div class="sug-text">What does the Bhagavad Gita say about anxiety?</div>
+            </div>
+            <div class="sug">
+              <span class="sug-icon">☪️</span>
+              <div class="sug-text">What does Islam teach about patience?</div>
+            </div>
+            <div class="sug">
+              <span class="sug-icon">✝️</span>
+              <div class="sug-text">Give me a Bible verse for when I feel lost</div>
+            </div>
+            <div class="sug">
+              <span class="sug-icon">🎵</span>
+              <div class="sug-text">Play Hanuman Chalisa for me</div>
+            </div>
+          </div>
+        </div>
+      `;
      }
-   }
+    }
