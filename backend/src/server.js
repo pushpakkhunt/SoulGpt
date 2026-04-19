@@ -2,13 +2,15 @@
    SoulGPT — Backend Server
    File: backend/src/server.js
    ============================================================ */
-   const session = require('express-session');
-   const passport = require('./config/passport');
+
+   require('dotenv').config();
+
    const express = require('express');
    const cors = require('cors');
    const helmet = require('helmet');
    const rateLimit = require('express-rate-limit');
-   require('dotenv').config();
+   const session = require('express-session');
+   const passport = require('./config/passport');
    
    const { connectDB } = require('./models');
    const authRoutes = require('./routes/auth');
@@ -57,7 +59,6 @@
    
    const corsOptions = {
      origin(origin, callback) {
-       // Allow non-browser tools or same-origin requests with no Origin header
        if (!origin) {
          return callback(null, true);
        }
@@ -80,16 +81,17 @@
    
    // ── Body Parsing ────────────────────────────────────────────
    app.use(express.json({ limit: '10kb' }));
-
+   
+   // ── Session / Passport ─────────────────────────────────────
    app.use(
-    session({
-      secret: process.env.SESSION_SECRET || 'soulgpt-secret',
-      resave: false,
-      saveUninitialized: false,
-    })
-  );
-  
-  app.use(passport.initialize());
+     session({
+       secret: process.env.SESSION_SECRET || 'soulgpt-secret',
+       resave: false,
+       saveUninitialized: false,
+     })
+   );
+   
+   app.use(passport.initialize());
    
    // ── Rate Limiting ───────────────────────────────────────────
    const globalLimiter = rateLimit({
@@ -163,6 +165,12 @@
        if (!key || key.includes('...') || key.length < 20) {
          console.warn(
            '⚠ ANTHROPIC_API_KEY missing or looks like a placeholder — set a real key in backend/.env or chat will fail.'
+         );
+       }
+   
+       if (!process.env.GOOGLE_CLIENT_ID || !process.env.GOOGLE_CLIENT_SECRET) {
+         console.warn(
+           '⚠ Google OAuth env vars are missing. GOOGLE_CLIENT_ID / GOOGLE_CLIENT_SECRET must be set for Google login.'
          );
        }
      });
