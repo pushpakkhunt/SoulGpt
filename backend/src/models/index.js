@@ -126,6 +126,41 @@
          default: null,
          maxlength: 50,
        },
+       teaching: {
+         type: String,
+         default: null,
+         maxlength: 240,
+       },
+       practice: {
+         type: String,
+         default: null,
+         maxlength: 300,
+       },
+       reflection: {
+         type: String,
+         default: null,
+         maxlength: 300,
+       },
+       next_step: {
+         type: String,
+         default: null,
+         maxlength: 300,
+       },
+       follow_up_options: {
+         type: [String],
+         default: [],
+         validate: {
+           validator: function (arr) {
+             return Array.isArray(arr) && arr.length <= 3;
+           },
+           message: 'follow_up_options can contain at most 3 items',
+         },
+       },
+       return_prompt: {
+         type: String,
+         default: null,
+         maxlength: 300,
+       },
        timestamp: {
          type: Date,
          default: Date.now,
