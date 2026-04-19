@@ -1,5 +1,5 @@
 /* ============================================================
-   SoulGPT — AI Chat Service (Safer Structured Version)
+   SoulGPT — AI Chat Service (Return-Oriented Version)
    File: backend/src/services/aiService.js
    ============================================================ */
 
@@ -36,21 +36,27 @@
      'general',
    ];
    
-   const BASE_SYSTEM_PROMPT = `You are SoulGPT, a compassionate multi-faith spiritual wisdom guide.
+   const BASE_SYSTEM_PROMPT = `You are SoulGPT, a calm and thoughtful spiritual guide.
+   
+   Your job is not just to answer questions, but to guide the user into clarity, reflection, and a meaningful next step.
    
    Follow these rules:
-   1. Give warm, practical, respectful spiritual guidance.
-   2. Cite specific scriptures or teachings when possible.
-   3. Use *italics* for short direct scripture quotes only.
-   4. Be humble, calm, and never preachy.
-   5. Keep responses focused and clear.
-   6. Default to about 120-220 words unless the user clearly asks for more depth.
-   7. If the user asks for a long response, essay, paragraph set, or 2-page explanation, you MUST write the full response immediately.
-   8. Do NOT ask follow-up questions if a reasonable topic can be inferred from the conversation.
-   9. If the user previously asked about a topic, assume that topic continues unless explicitly changed.
-   10. Only ask a clarifying question if there is absolutely no clear topic from the conversation.
-   11. Never insult, mock, or degrade any religion or tradition.
-   12. Never invent fake citations. If unsure, give a general teaching without a false reference.
+   1. Give warm, grounded, practical spiritual guidance.
+   2. Be specific, not generic.
+   3. Prefer one strong spiritual lens unless the user explicitly asks for comparison across traditions.
+   4. Cite real scriptures or teachings when you are confident. Never invent references.
+   5. Use short direct quotes only when helpful, and keep them brief.
+   6. Avoid sounding like a generic chatbot. Do not overuse phrases like "many traditions teach" or "that is a beautiful question."
+   7. Structure responses so they feel helpful and memorable:
+      - core insight
+      - brief explanation
+      - one practical next step
+      - one gentle continuation hook
+   8. Default to about 100-180 words unless the user asks for more depth.
+   9. If the user asks for a longer answer, deeper explanation, essay, or expansion, provide it fully.
+   10. When the selected tradition is "all", choose the most relevant tradition for the user's situation unless they explicitly ask for multiple traditions.
+   11. If the conversation already has a topic, continue it naturally without unnecessary clarification.
+   12. Be calm, compassionate, and direct. Do not preach. Do not sound inflated or theatrical.
    13. Return valid JSON only.
    
    You must return ONLY valid JSON.
@@ -59,13 +65,16 @@
    
    JSON format:
    {
-     "message": "response text",
+     "message": "main response text",
      "tradition": "Hindu|Islam|Christian|Sikh|Jain|Buddhist|All",
      "citation": "brief scripture refs",
      "intent": "purpose|anxiety|grief|loss|relationships|meaning|death|forgiveness|prayer|gratitude|anger|fear|hope|stress|guidance|scripture|comparison|general",
      "teaching": "one short key principle",
      "practice": "one short practical step",
-     "reflection": "one short reflective takeaway"
+     "reflection": "one short reflective takeaway",
+     "next_step": "one clear next action for the user",
+     "follow_up_options": ["Prayer", "Deeper guidance", "Calming audio"],
+     "return_prompt": "one gentle line that gives the user a reason to return later"
    }`.trim();
    
    const TRADITION_PROMPTS = {
@@ -90,7 +99,7 @@
        systemPrompt += `\n\nTradition focus: ${TRADITION_PROMPTS[tradition]}`;
      } else {
        systemPrompt +=
-         '\n\nIf no single tradition is selected, you may draw respectfully from multiple traditions when helpful.';
+         '\n\nIf no single tradition is selected, choose the single most relevant spiritual tradition for the user’s question unless they explicitly ask for comparison across traditions.';
      }
    
      if (language === 'hi') {
@@ -215,39 +224,37 @@
        .replace(/\\\\/g, '\\')
        .trim();
    }
-
+   
    function cleanMessageOutput(text) {
-    if (!text) return '';
-  
-    const str = String(text).trim();
-  
-    if (str.startsWith('{') && str.includes('"message"')) {
-      try {
-        const parsed = JSON.parse(str);
-        if (parsed.message) return String(parsed.message).trim();
-      } catch {}
-  
-      const match = str.match(/"message"\s*:\s*"([\s\S]*?)"/);
-      if (match?.[1]) {
-        return match[1]
-          .replace(/\\n/g, '\n')
-          .replace(/\\"/g, '"')
-          .replace(/\\\\/g, '\\')
-          .trim();
-      }
-    }
-  
-    return str;
-  }
+     if (!text) return '';
+   
+     const str = String(text).trim();
+   
+     if (str.startsWith('{') && str.includes('"message"')) {
+       try {
+         const parsed = JSON.parse(str);
+         if (parsed.message) return String(parsed.message).trim();
+       } catch {}
+   
+       const match = str.match(/"message"\s*:\s*"([\s\S]*?)"/);
+       if (match?.[1]) {
+         return match[1]
+           .replace(/\\n/g, '\n')
+           .replace(/\\"/g, '"')
+           .replace(/\\\\/g, '\\')
+           .trim();
+       }
+     }
+   
+     return str;
+   }
    
    function safeParseJSON(rawText) {
      if (!rawText || typeof rawText !== 'string') return null;
    
      try {
        return JSON.parse(rawText);
-     } catch {
-       // continue
-     }
+     } catch {}
    
      try {
        const start = rawText.indexOf('{');
@@ -256,20 +263,14 @@
          const jsonString = rawText.slice(start, end + 1);
          return JSON.parse(jsonString);
        }
-     } catch {
-       // continue
-     }
+     } catch {}
    
      try {
        const extractedMessage = extractMessageFromJsonLikeText(rawText);
        if (extractedMessage) {
-         return {
-           message: extractedMessage,
-         };
+         return { message: extractedMessage };
        }
-     } catch {
-       // continue
-     }
+     } catch {}
    
      return null;
    }
@@ -288,7 +289,19 @@
        teaching: '',
        practice: '',
        reflection: '',
+       next_step: '',
+       follow_up_options: [],
+       return_prompt: '',
      };
+   }
+   
+   function normalizeFollowUpOptions(value) {
+     if (!Array.isArray(value)) return [];
+   
+     return value
+       .map((item) => sanitizeText(item))
+       .filter(Boolean)
+       .slice(0, 3);
    }
    
    function normalizeAiResponse(parsed, rawText, requestedTradition, userMessage) {
@@ -299,10 +312,10 @@
      const extractedMessage = extractMessageFromJsonLikeText(rawText);
    
      const message =
-      cleanMessageOutput(parsed.message) ||
-      cleanMessageOutput(extractedMessage) ||
-      cleanMessageOutput(rawText) ||
-      'I am here with you. Please share a little more, and I will offer a thoughtful spiritual response.';
+       cleanMessageOutput(parsed.message) ||
+       cleanMessageOutput(extractedMessage) ||
+       cleanMessageOutput(rawText) ||
+       'I am here with you. Please share a little more, and I will offer a thoughtful spiritual response.';
    
      return {
        message,
@@ -315,6 +328,9 @@
        teaching: sanitizeText(parsed.teaching),
        practice: sanitizeText(parsed.practice),
        reflection: sanitizeText(parsed.reflection),
+       next_step: sanitizeText(parsed.next_step),
+       follow_up_options: normalizeFollowUpOptions(parsed.follow_up_options),
+       return_prompt: sanitizeText(parsed.return_prompt),
      };
    }
    
@@ -384,8 +400,8 @@
      try {
        const response = await client.messages.create({
          model: CHAT_MODEL,
-         max_tokens: 600,
-         temperature: 0.4,
+         max_tokens: 420,
+         temperature: 0.55,
          system: systemPrompt,
          messages,
        });

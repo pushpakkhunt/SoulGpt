@@ -29,9 +29,13 @@
           New conversation
         </button>
   
-        <div class="sec-label" style="margin-top:6px;">Tradition</div>
+        <div class="sec-label" style="margin-top:6px;">Explore</div>
         <div class="religions" id="traditionList">
           ${this._traditionsHTML()}
+        </div>
+  
+        <div class="tradition-focus" id="traditionFocus">
+          ${this._traditionFocusHTML(this.activeTradition)}
         </div>
   
         <div style="height:12px;"></div>
@@ -67,7 +71,14 @@
         btn.addEventListener('click', () => {
           el.querySelectorAll('.r-btn').forEach((b) => b.classList.remove('active'));
           btn.classList.add('active');
+  
           this.activeTradition = btn.dataset.tradition || 'all';
+  
+          const focus = el.querySelector('#traditionFocus');
+          if (focus) {
+            focus.innerHTML = this._traditionFocusHTML(this.activeTradition);
+          }
+  
           this.onTraditionChange?.(this.activeTradition);
         });
       });
@@ -115,7 +126,7 @@
       return traditions
         .map(
           (t) => `
-            <button class="r-btn ${t.id === 'all' ? 'active' : ''}" data-tradition="${t.id}" type="button">
+            <button class="r-btn ${t.id === this.activeTradition ? 'active' : ''}" data-tradition="${t.id}" type="button">
               <div class="r-icon">${t.icon}</div>
               <span class="r-name">${t.label}</span>
               <div class="r-dot"></div>
@@ -123,6 +134,66 @@
           `
         )
         .join('');
+    }
+  
+    _traditionFocusHTML(tradition) {
+      const map = {
+        all: {
+          kicker: 'Current path',
+          title: 'Open exploration',
+          desc: 'Ask across traditions and discover wisdom without boundaries.',
+          chips: ['Purpose', 'Anxiety', 'Prayer'],
+        },
+        hindu: {
+          kicker: 'Current path',
+          title: 'Hindu wisdom',
+          desc: 'Explore dharma, Bhagavad Gita teachings, and sacred audio.',
+          chips: ['Bhagavad Gita', 'Dharma', 'Hanuman Chalisa'],
+        },
+        islam: {
+          kicker: 'Current path',
+          title: 'Islamic guidance',
+          desc: 'Reflect on patience, dua, surrender, and peace through Islamic teaching.',
+          chips: ['Patience', 'Dua', 'Trust in Allah'],
+        },
+        christian: {
+          kicker: 'Current path',
+          title: 'Christian reflection',
+          desc: 'Find comfort through Bible verses, prayer, and Christ-centered guidance.',
+          chips: ['Bible verses', 'Prayer', 'Hope'],
+        },
+        buddhist: {
+          kicker: 'Current path',
+          title: 'Buddhist insight',
+          desc: 'Explore peace, mindfulness, detachment, and inner clarity.',
+          chips: ['Mindfulness', 'Suffering', 'Inner peace'],
+        },
+        sikh: {
+          kicker: 'Current path',
+          title: 'Sikh wisdom',
+          desc: 'Reflect on seva, Naam Simran, strength, and humility.',
+          chips: ['Seva', 'Naam Simran', 'Humility'],
+        },
+        jain: {
+          kicker: 'Current path',
+          title: 'Jain wisdom',
+          desc: 'Explore nonviolence, discipline, inner purity, and spiritual restraint.',
+          chips: ['Ahimsa', 'Discipline', 'Inner purity'],
+        },
+      };
+  
+      const item = map[tradition] || map.all;
+  
+      return `
+        <div class="focus-card">
+          <div class="focus-kicker">${item.kicker}</div>
+          <div class="focus-title">${item.title}</div>
+          <div class="focus-desc">${item.desc}</div>
+          <div class="focus-chips">
+            ${item.chips.map((chip) => `<span class="focus-chip">${chip}</span>`).join('')}
+          </div>
+        </div>
+      `;
     }
   
     updateUser(user) {
