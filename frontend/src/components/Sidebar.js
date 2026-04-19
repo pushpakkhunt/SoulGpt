@@ -1,7 +1,7 @@
 /* ============================================================
    SoulGPT — Sidebar Component
    File: frontend/src/components/Sidebar.js
-   Refined Version
+   Stable Version
    ============================================================ */
 
    export class Sidebar {
@@ -105,6 +105,30 @@
       window.location.reload();
     }
   
+    _traditionsHTML() {
+      const traditions = [
+        { id: 'all', icon: '🌍', label: 'All traditions' },
+        { id: 'hindu', icon: '🕉️', label: 'Hindu' },
+        { id: 'islam', icon: '☪️', label: 'Islam' },
+        { id: 'christian', icon: '✝️', label: 'Christian' },
+        { id: 'buddhist', icon: '☸️', label: 'Buddhist' },
+        { id: 'sikh', icon: '☬', label: 'Sikh' },
+        { id: 'jain', icon: '🔷', label: 'Jain' },
+      ];
+  
+      return traditions
+        .map(
+          (t) => `
+            <button class="r-btn ${t.id === this.activeTradition ? 'active' : ''}" data-tradition="${t.id}" type="button">
+              <div class="r-icon">${t.icon}</div>
+              <span class="r-name">${t.label}</span>
+              <div class="r-dot"></div>
+            </button>
+          `
+        )
+        .join('');
+    }
+  
     _traditionFocusHTML(tradition) {
       const map = {
         all: {
@@ -150,9 +174,9 @@
           chips: ['Ahimsa', 'Discipline'],
         },
       };
-    
+  
       const item = map[tradition] || map.all;
-    
+  
       return `
         <div class="focus-card">
           <div class="focus-kicker">${item.kicker}</div>
