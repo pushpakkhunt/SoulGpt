@@ -1,6 +1,7 @@
 /* ============================================================
    SoulGPT — App Entry Point
    File: frontend/src/main.js
+   Guided + Return-Oriented Version
    ============================================================ */
 
    import { Sidebar } from './components/Sidebar.js';
@@ -42,7 +43,7 @@
      onNewChat: () => {
        currentConversationId = null;
        chat.clearMessages();
-       chat.setTopbarTitle('Ask anything spiritual...');
+       chat.setTopbarTitle('Ask spiritual questions. Get wisdom from real scriptures.');
      },
      onHistoryClick: loadConversation,
      onDeleteHistory: deleteConversation,
@@ -50,6 +51,26 @@
    
    const chat = new Chat({
      onSend: handleSend,
+     onPrayerRequest: async (fallbackKey) => {
+       const prayer = PRAYERS['hanuman chalisa'] || { key: fallbackKey || 'hanuman-chalisa', title: 'Hanuman Chalisa', tradition: 'Hindu', durationSecs: 503 };
+   
+       try {
+         const streamData = await api.getPrayerStream(prayer.key);
+         player.open({
+           title: streamData.title,
+           tradition: streamData.tradition,
+           audioUrl: streamData.audioUrl,
+         });
+       } catch (err) {
+         console.error('Failed to fetch prayer stream from follow-up action:', err);
+         player.open({
+           title: prayer.title,
+           tradition: prayer.tradition,
+           durationSecs: prayer.durationSecs,
+           audioUrl: null,
+         });
+       }
+     },
    });
    
    const player = new AudioPlayer();
@@ -118,6 +139,17 @@
      }
    }
    
+   function appendAssistantResponse(res) {
+     chat.appendBotMessage({
+       text: res?.message || 'I am here with you.',
+       tradition: res?.tradition || null,
+       cite: res?.citation || null,
+       next_step: res?.next_step || '',
+       follow_up_options: res?.follow_up_options || [],
+       return_prompt: res?.return_prompt || '',
+     });
+   }
+   
    // ── Handle Send ─────────────────────────────────────────────
    async function handleSend(text) {
      chat.setLoading(true);
@@ -137,6 +169,9 @@
            text: `I'll play *${prayer.title}* for you now. 🙏\n\nThis sacred ${prayer.tradition} prayer has been chanted for centuries.\n\nBreathe deeply and simply receive.`,
            tradition: prayer.tradition,
            cite: null,
+           next_step: 'Take a slow breath and let the words settle before trying to understand them.',
+           follow_up_options: ['Deeper guidance'],
+           return_prompt: 'Come back whenever you want another moment of stillness.',
          });
    
          setTimeout(async () => {
@@ -195,11 +230,7 @@
        currentConversationId = res?.conversationId || currentConversationId;
    
        chat.removeTypingIndicator();
-       chat.appendBotMessage({
-         text: res?.message || 'I am here with you.',
-         tradition: res?.tradition || null,
-         cite: res?.citation || null,
-       });
+       appendAssistantResponse(res);
    
        await refreshHistoryIfLoggedIn();
      } catch (err) {
@@ -276,6 +307,9 @@
              text: msg.content,
              tradition: msg.tradition,
              cite: msg.citation,
+             next_step: msg.next_step,
+             follow_up_options: msg.follow_up_options || [],
+             return_prompt: msg.return_prompt,
            });
          }
        }
@@ -306,7 +340,7 @@
        if (currentConversationId === conversationId) {
          currentConversationId = null;
          chat.clearMessages();
-         chat.setTopbarTitle('Ask anything spiritual...');
+         chat.setTopbarTitle('Ask spiritual questions. Get wisdom from real scriptures.');
        }
    
        const convs = await api.getConversations();
