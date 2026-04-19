@@ -2,7 +2,8 @@
    SoulGPT — Backend Server
    File: backend/src/server.js
    ============================================================ */
-
+   const session = require('express-session');
+   const passport = require('./config/passport');
    const express = require('express');
    const cors = require('cors');
    const helmet = require('helmet');
@@ -79,6 +80,16 @@
    
    // ── Body Parsing ────────────────────────────────────────────
    app.use(express.json({ limit: '10kb' }));
+
+   app.use(
+    session({
+      secret: process.env.SESSION_SECRET || 'soulgpt-secret',
+      resave: false,
+      saveUninitialized: false,
+    })
+  );
+  
+  app.use(passport.initialize());
    
    // ── Rate Limiting ───────────────────────────────────────────
    const globalLimiter = rateLimit({

@@ -35,6 +35,29 @@
    let currentUser = null;
    let guestMessageCount = parseInt(localStorage.getItem('guest_msg_count') || '0', 10);
    
+   // ── Google Auth Success Handling ────────────────────────────
+   function handleGoogleAuthSuccessFromUrl() {
+     const url = new URL(window.location.href);
+     const token = url.searchParams.get('token');
+     const isAuthSuccessPath = window.location.pathname === '/auth-success';
+   
+     if (!isAuthSuccessPath || !token) {
+       return false;
+     }
+   
+     try {
+       localStorage.setItem('token', token);
+   
+       // Clean the URL so token is not left visible in the address bar
+       window.history.replaceState({}, '', '/');
+   
+       return true;
+     } catch (err) {
+       console.error('Failed to store auth token:', err);
+       return false;
+     }
+   }
+   
    // ── Components ──────────────────────────────────────────────
    const sidebar = new Sidebar({
      onTraditionChange: (t) => {
@@ -52,7 +75,12 @@
    const chat = new Chat({
      onSend: handleSend,
      onPrayerRequest: async (fallbackKey) => {
-       const prayer = PRAYERS['hanuman chalisa'] || { key: fallbackKey || 'hanuman-chalisa', title: 'Hanuman Chalisa', tradition: 'Hindu', durationSecs: 503 };
+       const prayer = PRAYERS['hanuman chalisa'] || {
+         key: fallbackKey || 'hanuman-chalisa',
+         title: 'Hanuman Chalisa',
+         tradition: 'Hindu',
+         durationSecs: 503,
+       };
    
        try {
          const streamData = await api.getPrayerStream(prayer.key);
@@ -107,6 +135,8 @@
    // ── Restore session if logged in ────────────────────────────
    (async () => {
      try {
+       const justCompletedGoogleAuth = handleGoogleAuthSuccessFromUrl();
+   
        const data = await api.getMe();
        currentUser = data.user;
        sidebar.updateUser(currentUser);
@@ -117,6 +147,17 @@
    
        const convs = await api.getConversations();
        sidebar.loadHistory(convs.conversations || []);
+   
+       if (justCompletedGoogleAuth) {
+         chat.appendBotMessage({
+           text: `Welcome back, ${currentUser?.name || 'friend'} ✦\n\nYou are now signed in with Google and your journey can be saved.`,
+           tradition: null,
+           cite: null,
+           next_step: 'Ask what is on your heart, or continue a past conversation from the sidebar.',
+           follow_up_options: [],
+           return_prompt: '',
+         });
+       }
      } catch {
        // Guest mode
      }

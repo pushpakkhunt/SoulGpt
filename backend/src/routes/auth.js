@@ -8,6 +8,7 @@
    const bcrypt = require('bcryptjs');
    const jwt = require('jsonwebtoken');
    const { body, validationResult } = require('express-validator');
+   const passport = require('../config/passport');
    
    const { requireAuth } = require('../middleware/auth');
    const User = require('../models/User');
@@ -205,5 +206,42 @@
        return next(err);
      }
    });
+   
+   /**
+    * GET /api/auth/google
+    * Start Google login
+    */
+   router.get(
+     '/google',
+     passport.authenticate('google', {
+       scope: ['profile', 'email'],
+       session: false,
+     })
+   );
+   
+   /**
+    * GET /api/auth/google/callback
+    * Google login callback
+    */
+   router.get(
+     '/google/callback',
+     passport.authenticate('google', {
+       session: false,
+       failureRedirect: '/login',
+     }),
+     async (req, res) => {
+       try {
+         req.user.lastLoginAt = new Date();
+         await req.user.save();
+   
+         const token = signToken(req.user._id);
+         const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+   
+         res.redirect(`${frontendUrl}/auth-success?token=${token}`);
+       } catch (err) {
+         res.status(500).send('Authentication failed');
+       }
+     }
+   );
    
    module.exports = router;
