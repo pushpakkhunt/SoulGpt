@@ -1,6 +1,7 @@
 /* ============================================================
    SoulGPT — Sidebar Component
    File: frontend/src/components/Sidebar.js
+   Refined Version
    ============================================================ */
 
    export class Sidebar {
@@ -19,7 +20,7 @@
       el.innerHTML = `
         <div class="logo-area">
           <div class="logo">Soul<span>GPT</span></div>
-          <div class="logo-sub">Wisdom from every tradition</div>
+          <div class="logo-sub">Guided spiritual clarity</div>
         </div>
   
         <button class="new-btn" id="newChatBtn" type="button">
@@ -29,22 +30,21 @@
           New conversation
         </button>
   
-        <div class="sec-label" style="margin-top:6px;">Explore</div>
-        <div class="religions" id="traditionList">
-          ${this._traditionsHTML()}
-        </div>
+        <div class="sidebar-scroll">
+          <div class="sec-label">Explore</div>
   
-        <div class="tradition-focus" id="traditionFocus">
-          ${this._traditionFocusHTML(this.activeTradition)}
-        </div>
+          <div class="religions" id="traditionList">
+            ${this._traditionsHTML()}
+          </div>
   
-        <div style="height:12px;"></div>
-        <div class="sec-label">Recent</div>
-        <div class="history" id="historyList">
-          <div class="h-item cur">What does the Gita say about purpose?</div>
-          <div class="h-item">Play Hanuman Chalisa</div>
-          <div class="h-item">How to deal with grief in Islam?</div>
-          <div class="h-item">Bible verse for anxiety</div>
+          <div class="tradition-focus" id="traditionFocus">
+            ${this._traditionFocusHTML(this.activeTradition)}
+          </div>
+  
+          <div class="sec-label sec-label-recent">Recent</div>
+          <div class="history" id="historyList">
+            <div class="history-empty">No recent conversations</div>
+          </div>
         </div>
   
         <div class="sb-bottom">
@@ -118,9 +118,9 @@
         { id: 'hindu', icon: '🕉️', label: 'Hindu' },
         { id: 'islam', icon: '☪️', label: 'Islam' },
         { id: 'christian', icon: '✝️', label: 'Christian' },
-        { id: 'jain', icon: '🔷', label: 'Jain' },
-        { id: 'sikh', icon: '☬', label: 'Sikh' },
         { id: 'buddhist', icon: '☸️', label: 'Buddhist' },
+        { id: 'sikh', icon: '☬', label: 'Sikh' },
+        { id: 'jain', icon: '🔷', label: 'Jain' },
       ];
   
       return traditions
@@ -141,44 +141,44 @@
         all: {
           kicker: 'Current path',
           title: 'Open exploration',
-          desc: 'Ask across traditions and discover wisdom without boundaries.',
-          chips: ['Purpose', 'Anxiety', 'Prayer'],
+          desc: 'Ask freely across traditions and follow the guidance that meets your moment.',
+          chips: ['Purpose', 'Anxiety'],
         },
         hindu: {
           kicker: 'Current path',
           title: 'Hindu wisdom',
-          desc: 'Explore dharma, Bhagavad Gita teachings, and sacred audio.',
-          chips: ['Bhagavad Gita', 'Dharma', 'Hanuman Chalisa'],
+          desc: 'Explore dharma, Gita insight, and sacred devotional guidance.',
+          chips: ['Bhagavad Gita', 'Dharma'],
         },
         islam: {
           kicker: 'Current path',
           title: 'Islamic guidance',
-          desc: 'Reflect on patience, dua, surrender, and peace through Islamic teaching.',
-          chips: ['Patience', 'Dua', 'Trust in Allah'],
+          desc: 'Reflect through patience, dua, remembrance, and trust in Allah.',
+          chips: ['Patience', 'Dua'],
         },
         christian: {
           kicker: 'Current path',
           title: 'Christian reflection',
-          desc: 'Find comfort through Bible verses, prayer, and Christ-centered guidance.',
-          chips: ['Bible verses', 'Prayer', 'Hope'],
+          desc: 'Find peace through prayer, scripture, and Christ-centered encouragement.',
+          chips: ['Prayer', 'Bible verses'],
         },
         buddhist: {
           kicker: 'Current path',
           title: 'Buddhist insight',
-          desc: 'Explore peace, mindfulness, detachment, and inner clarity.',
-          chips: ['Mindfulness', 'Suffering', 'Inner peace'],
+          desc: 'Return to mindfulness, stillness, and inner clarity.',
+          chips: ['Mindfulness', 'Inner peace'],
         },
         sikh: {
           kicker: 'Current path',
           title: 'Sikh wisdom',
-          desc: 'Reflect on seva, Naam Simran, strength, and humility.',
-          chips: ['Seva', 'Naam Simran', 'Humility'],
+          desc: 'Reflect on humility, remembrance, service, and strength.',
+          chips: ['Seva', 'Naam Simran'],
         },
         jain: {
           kicker: 'Current path',
           title: 'Jain wisdom',
-          desc: 'Explore nonviolence, discipline, inner purity, and spiritual restraint.',
-          chips: ['Ahimsa', 'Discipline', 'Inner purity'],
+          desc: 'Explore ahimsa, restraint, inner purity, and spiritual discipline.',
+          chips: ['Ahimsa', 'Discipline'],
         },
       };
   
@@ -247,7 +247,7 @@
       if (!list) return;
   
       if (!Array.isArray(conversations) || conversations.length === 0) {
-        list.innerHTML = `<div class="h-item">No recent conversations</div>`;
+        list.innerHTML = `<div class="history-empty">No recent conversations</div>`;
         return;
       }
   
