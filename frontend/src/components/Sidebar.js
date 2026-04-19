@@ -105,78 +105,54 @@
       window.location.reload();
     }
   
-    _traditionsHTML() {
-      const traditions = [
-        { id: 'all', icon: '🌍', label: 'All traditions' },
-        { id: 'hindu', icon: '🕉️', label: 'Hindu' },
-        { id: 'islam', icon: '☪️', label: 'Islam' },
-        { id: 'christian', icon: '✝️', label: 'Christian' },
-        { id: 'buddhist', icon: '☸️', label: 'Buddhist' },
-        { id: 'sikh', icon: '☬', label: 'Sikh' },
-        { id: 'jain', icon: '🔷', label: 'Jain' },
-      ];
-  
-      return traditions
-        .map(
-          (t) => `
-            <button class="r-btn ${t.id === this.activeTradition ? 'active' : ''}" data-tradition="${t.id}" type="button">
-              <div class="r-icon">${t.icon}</div>
-              <span class="r-name">${t.label}</span>
-              <div class="r-dot"></div>
-            </button>
-          `
-        )
-        .join('');
-    }
-  
     _traditionFocusHTML(tradition) {
       const map = {
         all: {
           kicker: 'Current path',
           title: 'Open exploration',
-          desc: 'Ask freely across traditions and follow the guidance that meets your moment.',
+          desc: 'Ask across traditions with calm, guided clarity.',
           chips: ['Purpose', 'Anxiety'],
         },
         hindu: {
           kicker: 'Current path',
           title: 'Hindu wisdom',
-          desc: 'Explore dharma, Gita insight, and sacred devotional guidance.',
+          desc: 'Gita, dharma, and devotional guidance.',
           chips: ['Bhagavad Gita', 'Dharma'],
         },
         islam: {
           kicker: 'Current path',
           title: 'Islamic guidance',
-          desc: 'Reflect through patience, dua, remembrance, and trust in Allah.',
+          desc: 'Patience, dua, remembrance, and trust.',
           chips: ['Patience', 'Dua'],
         },
         christian: {
           kicker: 'Current path',
           title: 'Christian reflection',
-          desc: 'Find peace through prayer, scripture, and Christ-centered encouragement.',
+          desc: 'Prayer, scripture, and Christ-centered peace.',
           chips: ['Prayer', 'Bible verses'],
         },
         buddhist: {
           kicker: 'Current path',
           title: 'Buddhist insight',
-          desc: 'Return to mindfulness, stillness, and inner clarity.',
+          desc: 'Mindfulness, stillness, and inner clarity.',
           chips: ['Mindfulness', 'Inner peace'],
         },
         sikh: {
           kicker: 'Current path',
           title: 'Sikh wisdom',
-          desc: 'Reflect on humility, remembrance, service, and strength.',
+          desc: 'Service, remembrance, humility, and strength.',
           chips: ['Seva', 'Naam Simran'],
         },
         jain: {
           kicker: 'Current path',
           title: 'Jain wisdom',
-          desc: 'Explore ahimsa, restraint, inner purity, and spiritual discipline.',
+          desc: 'Ahimsa, restraint, and inner purity.',
           chips: ['Ahimsa', 'Discipline'],
         },
       };
-  
+    
       const item = map[tradition] || map.all;
-  
+    
       return `
         <div class="focus-card">
           <div class="focus-kicker">${item.kicker}</div>
