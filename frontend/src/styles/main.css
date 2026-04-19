@@ -87,3 +87,88 @@ body::before {
 ::-webkit-scrollbar        { width: 3px; }
 ::-webkit-scrollbar-thumb  { background: var(--bg4); border-radius: 2px; }
 * { scrollbar-width: thin; scrollbar-color: var(--bg4) transparent; }
+
+/* =================================
+   Chat — Guided Flow + Reflection
+   ================================= */
+
+   .daily-reflection {
+    margin: 18px 0 14px;
+    padding: 16px;
+    border-radius: 18px;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    backdrop-filter: blur(10px);
+  }
+  
+  .daily-kicker {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    opacity: 0.65;
+    margin-bottom: 8px;
+  }
+  
+  .daily-theme {
+    font-size: 15px;
+    font-weight: 600;
+    margin-bottom: 8px;
+  }
+  
+  .daily-line {
+    font-size: 13px;
+    line-height: 1.6;
+    opacity: 0.85;
+  }
+  
+  .reflection-action {
+    margin-top: 12px;
+    padding: 8px 12px;
+    border-radius: 999px;
+    font-size: 12px;
+    border: 1px solid rgba(255,255,255,0.1);
+    background: rgba(255,255,255,0.06);
+    color: inherit;
+    cursor: pointer;
+    transition: 0.2s ease;
+  }
+  
+  .reflection-action:hover {
+    background: rgba(255,255,255,0.12);
+  }
+  
+  .next-step {
+    margin-top: 12px;
+    font-size: 13px;
+    line-height: 1.5;
+    opacity: 0.88;
+  }
+  
+  .follow-ups {
+    display: flex;
+    gap: 8px;
+    margin-top: 10px;
+    flex-wrap: wrap;
+  }
+  
+  .follow-btn {
+    padding: 6px 10px;
+    border-radius: 999px;
+    font-size: 12px;
+    border: 1px solid rgba(255,255,255,0.1);
+    background: rgba(255,255,255,0.05);
+    color: inherit;
+    cursor: pointer;
+    transition: 0.2s ease;
+  }
+  
+  .follow-btn:hover {
+    background: rgba(255,255,255,0.12);
+  }
+  
+  .return-prompt {
+    margin-top: 12px;
+    font-size: 12px;
+    line-height: 1.5;
+    opacity: 0.6;
+  }

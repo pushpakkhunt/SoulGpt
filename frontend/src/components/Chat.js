@@ -1,6 +1,7 @@
 /* ============================================================
    SoulGPT — Chat Component
    File: frontend/src/components/Chat.js
+   Guided + Daily Reflection Version
    ============================================================ */
 
    import { TRADITION_BADGE_MAP, formatMessage } from '../lib/utils.js';
@@ -98,6 +99,35 @@
            input.style.height = 'auto';
            input.style.height = `${Math.min(input.scrollHeight, 110)}px`;
            this._handleSend();
+           return;
+         }
+   
+         const reflection = e.target.closest('.reflection-action');
+         if (reflection) {
+           const text = reflection.dataset.prompt?.trim();
+           if (!text) return;
+   
+           input.value = text;
+           input.style.height = 'auto';
+           input.style.height = `${Math.min(input.scrollHeight, 110)}px`;
+           this._handleSend();
+           return;
+         }
+   
+         const follow = e.target.closest('.follow-btn');
+         if (follow) {
+           const text = follow.dataset.follow?.trim();
+           if (!text) return;
+   
+           if (text.toLowerCase() === 'calming audio') {
+             this.onPrayerRequest?.('hanuman_chalisa');
+             return;
+           }
+   
+           input.value = text;
+           input.style.height = 'auto';
+           input.style.height = `${Math.min(input.scrollHeight, 110)}px`;
+           this._handleSend();
          }
        });
      }
@@ -172,7 +202,16 @@
        document.getElementById('typingIndicator')?.remove();
      }
    
-     appendBotMessage({ text, tradition, cite, plain = false, system = false }) {
+     appendBotMessage({
+       text,
+       tradition,
+       cite,
+       next_step,
+       follow_up_options = [],
+       return_prompt,
+       plain = false,
+       system = false,
+     }) {
        this._removeWelcome();
    
        const msgs = document.getElementById('msgs');
@@ -186,6 +225,10 @@
          ? this._escapeHTML(cleanedText).replace(/\n/g, '<br>')
          : formatMessage(cleanedText);
    
+       const safeOptions = Array.isArray(follow_up_options)
+         ? follow_up_options.filter(Boolean).slice(0, 3)
+         : [];
+   
        const el = document.createElement('div');
        el.className = `msg ${system ? 'msg-system' : ''}`;
        el.innerHTML = `
@@ -198,8 +241,35 @@
                  ? `<div class="trad-badge ${badge}">${this._escapeHTML(normalizedTradition)}</div><br>`
                  : ''
              }
+   
              ${formattedText}
+   
              ${cite ? `<br><br><div class="cite">📖 ${this._escapeHTML(cite)}</div>` : ''}
+   
+             ${
+               next_step
+                 ? `<div class="next-step">✨ ${this._escapeHTML(next_step)}</div>`
+                 : ''
+             }
+   
+             ${
+               safeOptions.length
+                 ? `<div class="follow-ups">
+                     ${safeOptions
+                       .map(
+                         (opt) =>
+                           `<button class="follow-btn" data-follow="${this._escapeHTML(opt)}">${this._escapeHTML(opt)}</button>`
+                       )
+                       .join('')}
+                   </div>`
+                 : ''
+             }
+   
+             ${
+               return_prompt
+                 ? `<div class="return-prompt">${this._escapeHTML(return_prompt)}</div>`
+                 : ''
+             }
            </div>
          </div>
        `;
@@ -233,7 +303,7 @@
    
      setTopbarTitle(title) {
        const el = document.getElementById('tbTitle');
-       if (el) el.textContent = title || 'Ask anything spiritual...';
+       if (el) el.textContent = title || 'Ask spiritual questions. Get wisdom from real scriptures.';
      }
    
      _removeWelcome() {
@@ -248,7 +318,6 @@
        const raw = String(text || '').trim();
        if (!raw) return '';
    
-       // If JSON-like text slips through, try extracting just the message field
        if (raw.startsWith('{') && raw.includes('"message"')) {
          try {
            const parsed = JSON.parse(raw);
@@ -274,37 +343,79 @@
        return String(str || '')
          .replace(/&/g, '&amp;')
          .replace(/</g, '&lt;')
-         .replace(/>/g, '&gt;');
+         .replace(/>/g, '&gt;')
+         .replace(/"/g, '&quot;');
+     }
+   
+     _todayReflection() {
+       const reflections = [
+         {
+           theme: 'Letting go of control',
+           line: 'Peace often begins when you stop gripping tomorrow so tightly.',
+           prompt: 'How do I spiritually let go of control?',
+         },
+         {
+           theme: 'Patience in uncertainty',
+           line: 'The soul grows quietly in seasons where answers do not come quickly.',
+           prompt: 'What do spiritual traditions say about patience in uncertainty?',
+         },
+         {
+           theme: 'Calm in anxiety',
+           line: 'An anxious mind looks ahead; a steady heart returns to the present.',
+           prompt: 'Give me spiritual guidance for anxiety right now',
+         },
+         {
+           theme: 'Purpose and direction',
+           line: 'Clarity often comes after faithfulness to the next small step.',
+           prompt: 'How do I find spiritual clarity about my purpose?',
+         },
+       ];
+   
+       const today = new Date();
+       const index = today.getDate() % reflections.length;
+       return reflections[index];
      }
    
      _welcomeHTML() {
-      return `
-        <div class="welcome" id="welcome">
-          <div class="w-sym">✦</div>
-          <div class="w-title">Ask spiritual questions. Receive wisdom grounded in real traditions.</div>
-          <div class="w-sub">
-            Explore peace, purpose, anxiety, prayer, scripture, and meaning across Hindu, Islamic,
-            Christian, Buddhist, Sikh, and Jain teachings.
-          </div>
-          <div class="suggestions">
-            <div class="sug">
-              <span class="sug-icon">🕉️</span>
-              <div class="sug-text">What does the Bhagavad Gita say about anxiety?</div>
-            </div>
-            <div class="sug">
-              <span class="sug-icon">☪️</span>
-              <div class="sug-text">What does Islam teach about patience?</div>
-            </div>
-            <div class="sug">
-              <span class="sug-icon">✝️</span>
-              <div class="sug-text">Give me a Bible verse for when I feel lost</div>
-            </div>
-            <div class="sug">
-              <span class="sug-icon">🎵</span>
-              <div class="sug-text">Play Hanuman Chalisa for me</div>
-            </div>
-          </div>
-        </div>
-      `;
+       const reflection = this._todayReflection();
+   
+       return `
+         <div class="welcome" id="welcome">
+           <div class="w-sym">✦</div>
+           <div class="w-title">Ask spiritual questions. Receive wisdom grounded in real traditions.</div>
+           <div class="w-sub">
+             Explore peace, purpose, anxiety, prayer, scripture, and meaning across Hindu, Islamic,
+             Christian, Buddhist, Sikh, and Jain teachings.
+           </div>
+   
+           <div class="daily-reflection">
+             <div class="daily-kicker">Today’s Reflection</div>
+             <div class="daily-theme">${this._escapeHTML(reflection.theme)}</div>
+             <div class="daily-line">${this._escapeHTML(reflection.line)}</div>
+             <button class="reflection-action" data-prompt="${this._escapeHTML(reflection.prompt)}">
+               Explore this today
+             </button>
+           </div>
+   
+           <div class="suggestions">
+             <div class="sug">
+               <span class="sug-icon">🕉️</span>
+               <div class="sug-text">What does the Bhagavad Gita say about anxiety?</div>
+             </div>
+             <div class="sug">
+               <span class="sug-icon">☪️</span>
+               <div class="sug-text">What does Islam teach about patience?</div>
+             </div>
+             <div class="sug">
+               <span class="sug-icon">✝️</span>
+               <div class="sug-text">Give me a Bible verse for when I feel lost</div>
+             </div>
+             <div class="sug">
+               <span class="sug-icon">🎵</span>
+               <div class="sug-text">Play Hanuman Chalisa for me</div>
+             </div>
+           </div>
+         </div>
+       `;
      }
-    }
+   }
