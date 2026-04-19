@@ -1,7 +1,7 @@
 /* ============================================================
    SoulGPT — Chat Routes
    File: backend/src/routes/chat.js
-   Safe upgraded version
+   Return-oriented version
    ============================================================ */
 
    const express = require('express');
@@ -14,6 +14,18 @@
    } = require('../services/aiService');
    const Conversation = require('../models/Conversation');
    const User = require('../models/User');
+   
+   function safeText(value, fallback = '') {
+     return typeof value === 'string' && value.trim() ? value.trim() : fallback;
+   }
+   
+   function safeArray(value, limit = 3) {
+     if (!Array.isArray(value)) return [];
+     return value
+       .map((item) => (typeof item === 'string' ? item.trim() : ''))
+       .filter(Boolean)
+       .slice(0, limit);
+   }
    
    /**
     * POST /api/chat/message
@@ -107,33 +119,21 @@
            history
          );
    
-         // Final safety fallback
-         const safeMessage =
-           typeof aiResponse?.message === 'string' && aiResponse.message.trim()
-             ? aiResponse.message.trim()
-             : 'I am here with you. Please share a little more, and I will offer a thoughtful spiritual response.';
+         // Final safety fallbacks
+         const safeMessage = safeText(
+           aiResponse?.message,
+           'I am here with you. Please share a little more, and I will offer a thoughtful spiritual response.'
+         );
    
-         const safeTradition =
-           typeof aiResponse?.tradition === 'string' && aiResponse.tradition.trim()
-             ? aiResponse.tradition.trim()
-             : 'All';
-   
-         const safeCitation =
-           typeof aiResponse?.citation === 'string' ? aiResponse.citation.trim() : '';
-   
-         const safeIntent =
-           typeof aiResponse?.intent === 'string' && aiResponse.intent.trim()
-             ? aiResponse.intent.trim()
-             : 'general';
-   
-         const safeTeaching =
-           typeof aiResponse?.teaching === 'string' ? aiResponse.teaching.trim() : '';
-   
-         const safePractice =
-           typeof aiResponse?.practice === 'string' ? aiResponse.practice.trim() : '';
-   
-         const safeReflection =
-           typeof aiResponse?.reflection === 'string' ? aiResponse.reflection.trim() : '';
+         const safeTradition = safeText(aiResponse?.tradition, 'All');
+         const safeCitation = safeText(aiResponse?.citation, '');
+         const safeIntent = safeText(aiResponse?.intent, 'general');
+         const safeTeaching = safeText(aiResponse?.teaching, '');
+         const safePractice = safeText(aiResponse?.practice, '');
+         const safeReflection = safeText(aiResponse?.reflection, '');
+         const safeNextStep = safeText(aiResponse?.next_step, '');
+         const safeFollowUpOptions = safeArray(aiResponse?.follow_up_options, 3);
+         const safeReturnPrompt = safeText(aiResponse?.return_prompt, '');
    
          // Only create/save conversations for authenticated users
          if (userId) {
@@ -160,6 +160,13 @@
                timestamp: new Date(),
                tradition: safeTradition,
                citation: safeCitation,
+               intent: safeIntent,
+               teaching: safeTeaching,
+               practice: safePractice,
+               reflection: safeReflection,
+               next_step: safeNextStep,
+               follow_up_options: safeFollowUpOptions,
+               return_prompt: safeReturnPrompt,
              }
            );
    
@@ -175,6 +182,9 @@
            teaching: safeTeaching,
            practice: safePractice,
            reflection: safeReflection,
+           next_step: safeNextStep,
+           follow_up_options: safeFollowUpOptions,
+           return_prompt: safeReturnPrompt,
            conversationId: conversation?._id || null,
          });
        } catch (err) {
