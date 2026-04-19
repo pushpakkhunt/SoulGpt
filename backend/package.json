@@ -4,31 +4,34 @@
   "description": "SoulGPT API — Spiritual wisdom powered by Claude AI",
   "main": "src/server.js",
   "scripts": {
-    "start":   "node src/server.js",
-    "dev":     "nodemon src/server.js",
-    "test":    "jest --coverage",
-    "lint":    "eslint src/"
+    "start": "node src/server.js",
+    "dev": "nodemon src/server.js",
+    "test": "jest --coverage",
+    "lint": "eslint src/"
   },
   "dependencies": {
-    "@anthropic-ai/sdk":       "^0.27.0",
-    "@aws-sdk/client-s3":      "^3.600.0",
+    "@anthropic-ai/sdk": "^0.27.0",
+    "@aws-sdk/client-s3": "^3.600.0",
     "@aws-sdk/s3-request-presigner": "^3.600.0",
-    "bcryptjs":                "^2.4.3",
-    "cors":                    "^2.8.5",
-    "dotenv":                  "^16.4.5",
-    "express":                 "^4.19.2",
-    "express-rate-limit":      "^7.3.1",
-    "express-validator":       "^7.1.0",
-    "helmet":                  "^7.1.0",
-    "jsonwebtoken":            "^9.0.2",
-    "mongoose":                "^8.4.4",
-    "stripe":                  "^16.1.0"
+    "bcryptjs": "^2.4.3",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "express": "^4.19.2",
+    "express-rate-limit": "^7.3.1",
+    "express-session": "^1.18.0",
+    "express-validator": "^7.1.0",
+    "helmet": "^7.1.0",
+    "jsonwebtoken": "^9.0.2",
+    "mongoose": "^8.4.4",
+    "passport": "^0.7.0",
+    "passport-google-oauth20": "^2.0.0",
+    "stripe": "^16.1.0"
   },
   "devDependencies": {
-    "eslint":   "^9.6.0",
-    "jest":     "^29.7.0",
-    "nodemon":  "^3.1.4",
-    "supertest":"^7.0.0"
+    "eslint": "^9.6.0",
+    "jest": "^29.7.0",
+    "nodemon": "^3.1.4",
+    "supertest": "^7.0.0"
   },
   "engines": {
     "node": ">=18.0.0"
