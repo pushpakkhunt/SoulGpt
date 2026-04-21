@@ -87,16 +87,19 @@
              </div>
    
              <div id="otpField" style="display:none;">
-               <label class="auth-label" for="authOtp">Verification code</label>
-               <input
-                 class="auth-input"
-                 id="authOtp"
-                 type="text"
-                 inputmode="numeric"
-                 maxlength="6"
-                 placeholder="Enter 6-digit code"
-                 autocomplete="one-time-code"
-               />
+               <label class="auth-label">Verification code</label>
+   
+               <div class="auth-otp-wrap" id="authOtpWrap">
+                 <input class="auth-otp-box" type="text" inputmode="numeric" maxlength="1" data-otp-index="0" />
+                 <input class="auth-otp-box" type="text" inputmode="numeric" maxlength="1" data-otp-index="1" />
+                 <input class="auth-otp-box" type="text" inputmode="numeric" maxlength="1" data-otp-index="2" />
+                 <input class="auth-otp-box" type="text" inputmode="numeric" maxlength="1" data-otp-index="3" />
+                 <input class="auth-otp-box" type="text" inputmode="numeric" maxlength="1" data-otp-index="4" />
+                 <input class="auth-otp-box" type="text" inputmode="numeric" maxlength="1" data-otp-index="5" />
+               </div>
+   
+               <input id="authOtp" type="hidden" />
+   
                <div class="auth-help" id="otpHelpText">
                  We sent a verification code to your email.
                </div>
@@ -146,6 +149,7 @@
        this._clearError();
        this._clearSuccess();
        this._stopResendCooldown();
+       this._clearOtpBoxes();
    
        const form = this.el.querySelector('#authForm');
        if (form) form.reset();
@@ -164,7 +168,6 @@
        const resendOtpBtn = this.el.querySelector('#resendOtpBtn');
        const backToSignupBtn = this.el.querySelector('#backToSignupBtn');
        const googleAuthBtn = this.el.querySelector('#googleAuthBtn');
-       const otpInput = this.el.querySelector('#authOtp');
    
        closeBtn.addEventListener('click', () => this.close());
    
@@ -179,6 +182,7 @@
          this._clearError();
          this._clearSuccess();
          this._stopResendCooldown();
+         this._clearOtpBoxes();
          this._applyMode();
        });
    
@@ -187,6 +191,7 @@
          this._clearError();
          this._clearSuccess();
          this._stopResendCooldown();
+         this._clearOtpBoxes();
          this._applyMode();
        });
    
@@ -204,6 +209,7 @@
          this._clearError();
          this._clearSuccess();
          this._stopResendCooldown();
+         this._clearOtpBoxes();
          this._applyMode();
    
          const emailInput = this.el.querySelector('#authEmail');
@@ -222,13 +228,86 @@
          window.location.href = `${api.getBaseUrl()}/auth/google`;
        });
    
-       otpInput.addEventListener('input', () => {
-         otpInput.value = otpInput.value.replace(/\D/g, '').slice(0, 6);
-         this._clearError();
+       this._bindOtpEvents();
+     }
    
-         if (this.mode === 'verify' && otpInput.value.length === 6) {
-           this._submit();
-         }
+     _bindOtpEvents() {
+       const otpBoxes = this._getOtpBoxes();
+   
+       otpBoxes.forEach((box, index) => {
+         box.addEventListener('input', () => {
+           const value = box.value.replace(/\D/g, '').slice(0, 1);
+           box.value = value;
+           this._syncOtpHidden();
+           this._clearError();
+   
+           if (value && index < otpBoxes.length - 1) {
+             otpBoxes[index + 1].focus();
+             otpBoxes[index + 1].select();
+           }
+   
+           if (this.mode === 'verify' && this._getOtpValue().length === 6) {
+             this._submit();
+           }
+         });
+   
+         box.addEventListener('keydown', (e) => {
+           if (e.key === 'Backspace') {
+             if (box.value === '' && index > 0) {
+               otpBoxes[index - 1].focus();
+               otpBoxes[index - 1].value = '';
+               this._syncOtpHidden();
+             }
+             return;
+           }
+   
+           if (e.key === 'ArrowLeft' && index > 0) {
+             e.preventDefault();
+             otpBoxes[index - 1].focus();
+             return;
+           }
+   
+           if (e.key === 'ArrowRight' && index < otpBoxes.length - 1) {
+             e.preventDefault();
+             otpBoxes[index + 1].focus();
+             return;
+           }
+   
+           if (
+             e.key.length === 1 &&
+             !/^\d$/.test(e.key) &&
+             !e.ctrlKey &&
+             !e.metaKey
+           ) {
+             e.preventDefault();
+           }
+         });
+   
+         box.addEventListener('focus', () => {
+           box.select();
+         });
+   
+         box.addEventListener('paste', (e) => {
+           e.preventDefault();
+           const pasted = (e.clipboardData.getData('text') || '')
+             .replace(/\D/g, '')
+             .slice(0, 6);
+   
+           if (!pasted) return;
+   
+           otpBoxes.forEach((otpBox, i) => {
+             otpBox.value = pasted[i] || '';
+           });
+   
+           this._syncOtpHidden();
+   
+           const nextIndex = Math.min(pasted.length, 5);
+           otpBoxes[nextIndex].focus();
+   
+           if (this.mode === 'verify' && this._getOtpValue().length === 6) {
+             this._submit();
+           }
+         });
        });
      }
    
@@ -248,7 +327,7 @@
    
        const emailInput = this.el.querySelector('#authEmail');
        const passwordInput = this.el.querySelector('#authPassword');
-       const otpInput = this.el.querySelector('#authOtp');
+       const hiddenOtpInput = this.el.querySelector('#authOtp');
    
        const submitBtn = this.el.querySelector('#authSubmitBtn');
        const verifyActions = this.el.querySelector('#verifyActions');
@@ -276,7 +355,7 @@
    
          emailInput.required = true;
          passwordInput.required = true;
-         otpInput.required = false;
+         hiddenOtpInput.required = false;
    
          submitBtn.textContent = 'Login';
        } else if (isSignup) {
@@ -291,7 +370,7 @@
    
          emailInput.required = true;
          passwordInput.required = true;
-         otpInput.required = false;
+         hiddenOtpInput.required = false;
    
          submitBtn.textContent = 'Send Verification Code';
        } else if (isVerify) {
@@ -306,7 +385,7 @@
    
          emailInput.required = false;
          passwordInput.required = false;
-         otpInput.required = true;
+         hiddenOtpInput.required = true;
    
          otpHelpText.textContent = this.pendingEmail
            ? `We sent a 6-digit code to ${this.pendingEmail}.`
@@ -323,7 +402,7 @@
        const name = this.el.querySelector('#authName').value.trim();
        const email = this.el.querySelector('#authEmail').value.trim();
        const password = this.el.querySelector('#authPassword').value;
-       const otp = this.el.querySelector('#authOtp').value.trim();
+       const otp = this._getOtpValue();
    
        try {
          this._setLoading(true);
@@ -336,6 +415,7 @@
            this.pendingEmail = email;
            this.pendingName = name;
            this.mode = 'verify';
+           this._clearOtpBoxes();
            this._applyMode();
            this._showSuccess('Verification code sent. Please check your inbox.');
            this._startResendCooldown();
@@ -343,6 +423,10 @@
          }
    
          if (this.mode === 'verify') {
+           if (otp.length !== 6) {
+             throw new Error('Please enter the 6-digit verification code');
+           }
+   
            await api.verifySignup(this.pendingEmail, otp);
    
            this._showSuccess('Email verified successfully.');
@@ -380,6 +464,7 @@
          }
    
          await api.resendSignupOtp(this.pendingEmail);
+         this._clearOtpBoxes();
          this._showSuccess('A new verification code has been sent.');
          this._startResendCooldown();
          this._focusOtpSoon();
@@ -395,6 +480,7 @@
        const resendBtn = this.el.querySelector('#resendOtpBtn');
        const backBtn = this.el.querySelector('#backToSignupBtn');
        const googleBtn = this.el.querySelector('#googleAuthBtn');
+       const otpBoxes = this._getOtpBoxes();
    
        if (submitBtn) {
          submitBtn.disabled = loading;
@@ -421,6 +507,9 @@
        if (resendBtn) resendBtn.disabled = loading || this.resendCooldown > 0;
        if (backBtn) backBtn.disabled = loading;
        if (googleBtn) googleBtn.disabled = loading;
+       otpBoxes.forEach((box) => {
+         box.disabled = loading;
+       });
      }
    
      _startResendCooldown(seconds = 30) {
@@ -465,11 +554,35 @@
        }
      }
    
+     _getOtpBoxes() {
+       return Array.from(this.el?.querySelectorAll('.auth-otp-box') || []);
+     }
+   
+     _getOtpValue() {
+       return this._getOtpBoxes()
+         .map((box) => box.value.trim())
+         .join('');
+     }
+   
+     _syncOtpHidden() {
+       const hiddenInput = this.el?.querySelector('#authOtp');
+       if (hiddenInput) {
+         hiddenInput.value = this._getOtpValue();
+       }
+     }
+   
+     _clearOtpBoxes() {
+       this._getOtpBoxes().forEach((box) => {
+         box.value = '';
+       });
+       this._syncOtpHidden();
+     }
+   
      _focusOtpSoon() {
        setTimeout(() => {
-         const otpInput = this.el?.querySelector('#authOtp');
-         if (otpInput && this.mode === 'verify') {
-           otpInput.focus();
+         const firstOtp = this.el?.querySelector('.auth-otp-box');
+         if (firstOtp && this.mode === 'verify') {
+           firstOtp.focus();
          }
        }, 60);
      }
