@@ -225,8 +225,10 @@
        });
    
        googleAuthBtn.addEventListener('click', () => {
-         window.location.href = `${api.getBaseUrl()}/auth/google`;
-       });
+        const url = `${api.getBaseUrl()}/auth/google`;
+        console.log('Google auth URL:', url);
+        window.location.href = url;
+      });
    
        this._bindOtpEvents();
      }
