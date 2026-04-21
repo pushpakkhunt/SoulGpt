@@ -408,6 +408,14 @@
      }),
      async (req, res) => {
        try {
+         console.log('Google callback hit');
+         console.log('FRONTEND_URL:', process.env.FRONTEND_URL);
+         console.log('User exists:', Boolean(req.user));
+   
+         if (!req.user) {
+           throw new Error('req.user is missing in Google callback');
+         }
+   
          req.user.lastLoginAt = new Date();
          req.user.emailVerified = true;
    
