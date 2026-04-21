@@ -13,6 +13,9 @@
    
        this.pendingEmail = '';
        this.pendingName = '';
+   
+       this.resendCooldown = 0;
+       this.resendTimer = null;
      }
    
      render() {
@@ -22,11 +25,11 @@
    
        overlay.innerHTML = `
          <div class="auth-modal" role="dialog" aria-modal="true" aria-labelledby="authTitle">
-           <button class="auth-close" id="authCloseBtn" type="button">&times;</button>
+           <button class="auth-close" id="authCloseBtn" type="button" aria-label="Close">&times;</button>
    
            <div class="auth-head">
-             <h2 id="authTitle">Welcome to SoulGPT</h2>
-             <p id="authSubtitle">Sign in to save chats and continue your spiritual journey.</p>
+             <h2 id="authTitle">Continue your journey</h2>
+             <p id="authSubtitle">Find peace, clarity, and wisdom with SoulGPT.</p>
            </div>
    
            <div class="auth-tabs" id="authTabs">
@@ -36,6 +39,12 @@
    
            <div class="auth-google-wrap" id="googleWrap">
              <button class="auth-google-btn" id="googleAuthBtn" type="button">
+               <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true">
+                 <path fill="#EA4335" d="M12 10.2v3.9h5.4c-.2 1.3-1.5 3.9-5.4 3.9-3.3 0-6-2.7-6-6s2.7-6 6-6c1.9 0 3.2.8 3.9 1.5l2.7-2.6C16.9 3.3 14.7 2.4 12 2.4A9.6 9.6 0 0 0 2.4 12 9.6 9.6 0 0 0 12 21.6c5.5 0 9.2-3.9 9.2-9.4 0-.6-.1-1.1-.2-1.6H12z"/>
+                 <path fill="#34A853" d="M3.5 7.4l3.2 2.3C7.5 8 9.6 6 12 6c1.9 0 3.2.8 3.9 1.5l2.7-2.6C16.9 3.3 14.7 2.4 12 2.4c-3.7 0-6.9 2.1-8.5 5z"/>
+                 <path fill="#FBBC05" d="M2.4 12c0 1.5.4 2.9 1.1 4.2l3.7-2.8c-.2-.5-.4-1-.4-1.4s.1-1 .4-1.4L3.5 7.4A9.5 9.5 0 0 0 2.4 12z"/>
+                 <path fill="#4285F4" d="M12 21.6c2.6 0 4.9-.9 6.5-2.5l-3.2-2.5c-.9.6-2 .9-3.3.9-2.5 0-4.6-1.7-5.3-4L3.1 16c1.6 3.3 5 5.6 8.9 5.6z"/>
+               </svg>
                Continue with Google
              </button>
              <div class="auth-divider"><span>or</span></div>
@@ -44,17 +53,37 @@
            <form id="authForm" class="auth-form">
              <div id="nameField" style="display:none;">
                <label class="auth-label" for="authName">Name</label>
-               <input class="auth-input" id="authName" type="text" placeholder="Your name" />
+               <input
+                 class="auth-input"
+                 id="authName"
+                 type="text"
+                 placeholder="Your name"
+                 autocomplete="name"
+               />
              </div>
    
              <div id="emailField">
                <label class="auth-label" for="authEmail">Email</label>
-               <input class="auth-input" id="authEmail" type="email" placeholder="you@example.com" required />
+               <input
+                 class="auth-input"
+                 id="authEmail"
+                 type="email"
+                 placeholder="you@example.com"
+                 autocomplete="email"
+                 required
+               />
              </div>
    
              <div id="passwordField">
                <label class="auth-label" for="authPassword">Password</label>
-               <input class="auth-input" id="authPassword" type="password" placeholder="Enter password" required />
+               <input
+                 class="auth-input"
+                 id="authPassword"
+                 type="password"
+                 placeholder="Enter password"
+                 autocomplete="current-password"
+                 required
+               />
              </div>
    
              <div id="otpField" style="display:none;">
@@ -65,7 +94,8 @@
                  type="text"
                  inputmode="numeric"
                  maxlength="6"
-                 placeholder="Enter 6-digit OTP"
+                 placeholder="Enter 6-digit code"
+                 autocomplete="one-time-code"
                />
                <div class="auth-help" id="otpHelpText">
                  We sent a verification code to your email.
@@ -75,7 +105,7 @@
              <div class="auth-error" id="authError" style="display:none;"></div>
              <div class="auth-success" id="authSuccess" style="display:none;"></div>
    
-             <button class="auth-submit" id="authSubmitBtn" type="submit">Login</button>
+             <button class="auth-submit" id="authSubmitBtn" type="submit">Continue</button>
    
              <div class="auth-actions" id="verifyActions" style="display:none;">
                <button class="auth-secondary-btn" id="resendOtpBtn" type="button">
@@ -103,6 +133,10 @@
    
        this._applyMode();
        this.el.style.display = 'flex';
+   
+       if (this.mode === 'verify') {
+         this._focusOtpSoon();
+       }
      }
    
      close() {
@@ -111,6 +145,7 @@
        this.el.style.display = 'none';
        this._clearError();
        this._clearSuccess();
+       this._stopResendCooldown();
    
        const form = this.el.querySelector('#authForm');
        if (form) form.reset();
@@ -129,6 +164,7 @@
        const resendOtpBtn = this.el.querySelector('#resendOtpBtn');
        const backToSignupBtn = this.el.querySelector('#backToSignupBtn');
        const googleAuthBtn = this.el.querySelector('#googleAuthBtn');
+       const otpInput = this.el.querySelector('#authOtp');
    
        closeBtn.addEventListener('click', () => this.close());
    
@@ -142,6 +178,7 @@
          this.mode = 'login';
          this._clearError();
          this._clearSuccess();
+         this._stopResendCooldown();
          this._applyMode();
        });
    
@@ -149,6 +186,7 @@
          this.mode = 'signup';
          this._clearError();
          this._clearSuccess();
+         this._stopResendCooldown();
          this._applyMode();
        });
    
@@ -165,6 +203,7 @@
          this.mode = 'signup';
          this._clearError();
          this._clearSuccess();
+         this._stopResendCooldown();
          this._applyMode();
    
          const emailInput = this.el.querySelector('#authEmail');
@@ -180,11 +219,16 @@
        });
    
        googleAuthBtn.addEventListener('click', () => {
-         const baseUrl =
-           import.meta.env.VITE_API_URL ||
-           (import.meta.env.DEV ? '/api' : 'https://soulgpt-production.up.railway.app/api');
+         window.location.href = `${api.getBaseUrl()}/auth/google`;
+       });
    
-         window.location.href = `${baseUrl}/auth/google`;
+       otpInput.addEventListener('input', () => {
+         otpInput.value = otpInput.value.replace(/\D/g, '').slice(0, 6);
+         this._clearError();
+   
+         if (this.mode === 'verify' && otpInput.value.length === 6) {
+           this._submit();
+         }
        });
      }
    
@@ -217,12 +261,12 @@
        loginTab.classList.toggle('active', isLogin);
        signupTab.classList.toggle('active', isSignup);
    
-       authTabs.style.display = isVerify ? 'none' : 'flex';
+       authTabs.style.display = isVerify ? 'none' : 'grid';
        googleWrap.style.display = isVerify ? 'none' : 'block';
    
        if (isLogin) {
-         title.textContent = 'Welcome back';
-         subtitle.textContent = 'Log in to continue your saved spiritual conversations.';
+         title.textContent = 'Continue your journey';
+         subtitle.textContent = 'Log in to return to your saved reflections and conversations.';
    
          nameField.style.display = 'none';
          emailField.style.display = 'block';
@@ -236,8 +280,8 @@
    
          submitBtn.textContent = 'Login';
        } else if (isSignup) {
-         title.textContent = 'Create your account';
-         subtitle.textContent = 'Sign up to save chats and access your conversations.';
+         title.textContent = 'Begin your journey';
+         subtitle.textContent = 'Create your account to save chats, reflections, and your spiritual path.';
    
          nameField.style.display = 'block';
          emailField.style.display = 'block';
@@ -252,7 +296,7 @@
          submitBtn.textContent = 'Send Verification Code';
        } else if (isVerify) {
          title.textContent = 'Verify your email';
-         subtitle.textContent = 'Enter the 6-digit code sent to your email to finish creating your account.';
+         subtitle.textContent = 'One gentle step left before your account is ready.';
    
          nameField.style.display = 'none';
          emailField.style.display = 'none';
@@ -265,10 +309,11 @@
          otpInput.required = true;
    
          otpHelpText.textContent = this.pendingEmail
-           ? `We sent a verification code to ${this.pendingEmail}.`
-           : 'We sent a verification code to your email.';
+           ? `We sent a 6-digit code to ${this.pendingEmail}.`
+           : 'We sent a 6-digit code to your email.';
    
          submitBtn.textContent = 'Verify Account';
+         this._focusOtpSoon();
        }
    
        this._clearError();
@@ -292,16 +337,23 @@
            this.pendingName = name;
            this.mode = 'verify';
            this._applyMode();
-           this._showSuccess('Verification code sent. Please check your email.');
+           this._showSuccess('Verification code sent. Please check your inbox.');
+           this._startResendCooldown();
            return;
          }
    
          if (this.mode === 'verify') {
            await api.verifySignup(this.pendingEmail, otp);
    
+           this._showSuccess('Email verified successfully.');
+   
            const me = await api.getMe();
-           this.close();
-           this.onAuthSuccess?.(me);
+   
+           setTimeout(() => {
+             this.close();
+             this.onAuthSuccess?.(me);
+           }, 500);
+   
            return;
          }
    
@@ -329,6 +381,8 @@
    
          await api.resendSignupOtp(this.pendingEmail);
          this._showSuccess('A new verification code has been sent.');
+         this._startResendCooldown();
+         this._focusOtpSoon();
        } catch (err) {
          this._showError(err.message || 'Could not resend verification code');
        } finally {
@@ -364,9 +418,60 @@
          }
        }
    
-       if (resendBtn) resendBtn.disabled = loading;
+       if (resendBtn) resendBtn.disabled = loading || this.resendCooldown > 0;
        if (backBtn) backBtn.disabled = loading;
        if (googleBtn) googleBtn.disabled = loading;
+     }
+   
+     _startResendCooldown(seconds = 30) {
+       const resendBtn = this.el?.querySelector('#resendOtpBtn');
+       if (!resendBtn) return;
+   
+       this._stopResendCooldown();
+       this.resendCooldown = seconds;
+   
+       const tick = () => {
+         if (!resendBtn) return;
+   
+         if (this.resendCooldown > 0) {
+           resendBtn.disabled = true;
+           resendBtn.textContent = `Resend in ${this.resendCooldown}s`;
+           this.resendCooldown -= 1;
+         } else {
+           resendBtn.disabled = false;
+           resendBtn.textContent = 'Resend code';
+           this.resendTimer = null;
+           return;
+         }
+   
+         this.resendTimer = setTimeout(tick, 1000);
+       };
+   
+       tick();
+     }
+   
+     _stopResendCooldown() {
+       if (this.resendTimer) {
+         clearTimeout(this.resendTimer);
+         this.resendTimer = null;
+       }
+   
+       this.resendCooldown = 0;
+   
+       const resendBtn = this.el?.querySelector('#resendOtpBtn');
+       if (resendBtn) {
+         resendBtn.disabled = false;
+         resendBtn.textContent = 'Resend code';
+       }
+     }
+   
+     _focusOtpSoon() {
+       setTimeout(() => {
+         const otpInput = this.el?.querySelector('#authOtp');
+         if (otpInput && this.mode === 'verify') {
+           otpInput.focus();
+         }
+       }, 60);
      }
    
      _showError(message) {
