@@ -418,11 +418,16 @@
          await req.user.save();
    
          const token = signToken(req.user._id);
-         const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+         const frontendUrl = (process.env.FRONTEND_URL || 'http://localhost:5173').trim();
+         const redirectUrl = new URL('/auth-success', frontendUrl);
+         redirectUrl.searchParams.set('token', token);
    
-         res.redirect(`${frontendUrl}/auth-success?token=${token}`);
+         console.log('Google redirect target:', redirectUrl.toString());
+   
+         return res.redirect(redirectUrl.toString());
        } catch (err) {
-         res.status(500).send('Authentication failed');
+         console.error('Google auth callback error:', err);
+         return res.status(500).send('Authentication failed');
        }
      }
    );
