@@ -136,7 +136,6 @@
    async function start() {
      try {
        await connectDB();
-       console.log('✦ MongoDB connected');
      } catch (err) {
        console.error('\n✖ MongoDB connection failed:', err.message);
    

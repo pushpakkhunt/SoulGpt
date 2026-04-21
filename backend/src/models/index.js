@@ -34,6 +34,7 @@
          minlength: 2,
          maxlength: 50,
        },
+   
        email: {
          type: String,
          required: true,
@@ -44,10 +45,31 @@
          maxlength: 254,
          match: [/^\S+@\S+\.\S+$/, 'Invalid email address'],
        },
+   
        passwordHash: {
          type: String,
          required: false,
          select: false,
+         default: null,
+       },
+   
+       authProvider: {
+         type: String,
+         enum: ['local', 'google'],
+         default: 'local',
+       },
+   
+       googleId: {
+         type: String,
+         default: null,
+         index: true,
+         sparse: true,
+       },
+   
+       emailVerified: {
+         type: Boolean,
+         default: false,
+         index: true,
        },
    
        plan: {
@@ -92,9 +114,76 @@
      }
    );
    
-   userSchema.index({ email: 1 }, { unique: true });
+   const User = mongoose.models.User || mongoose.model('User', userSchema);
    
-   const User = mongoose.model('User', userSchema);
+   // ═══════════════════════════════════════════════════════════
+   //  PENDING USER VERIFICATION MODEL
+   //  Stores temporary signup data until OTP is verified
+   // ═══════════════════════════════════════════════════════════
+   const pendingUserVerificationSchema = new mongoose.Schema(
+     {
+       name: {
+         type: String,
+         required: true,
+         trim: true,
+         minlength: 2,
+         maxlength: 50,
+       },
+   
+       email: {
+         type: String,
+         required: true,
+         unique: true,
+         index: true,
+         lowercase: true,
+         trim: true,
+         maxlength: 254,
+         match: [/^\S+@\S+\.\S+$/, 'Invalid email address'],
+       },
+   
+       passwordHash: {
+         type: String,
+         required: true,
+         select: false,
+       },
+   
+       otpHash: {
+         type: String,
+         required: true,
+         select: false,
+       },
+   
+       otpExpiresAt: {
+        type: Date,
+        required: true,
+      },
+   
+       attempts: {
+         type: Number,
+         default: 0,
+         min: 0,
+       },
+   
+       resendCount: {
+         type: Number,
+         default: 0,
+         min: 0,
+       },
+     },
+     {
+       timestamps: true,
+     }
+   );
+   
+   // Automatically remove expired pending records
+   pendingUserVerificationSchema.index(
+     { otpExpiresAt: 1 },
+     { expireAfterSeconds: 0 }
+   );
+   
+   const PendingUserVerification =
+     mongoose.models.PendingUserVerification ||
+     mongoose.model('PendingUserVerification', pendingUserVerificationSchema);
    
    // ═══════════════════════════════════════════════════════════
    //  CONVERSATION MODEL
@@ -106,61 +195,72 @@
          enum: ['user', 'assistant'],
          required: true,
        },
+   
        content: {
          type: String,
          required: true,
          maxlength: 5000,
        },
+   
        tradition: {
          type: String,
          default: null,
          maxlength: 40,
        },
+   
        citation: {
          type: String,
          default: null,
          maxlength: 300,
        },
+   
        intent: {
          type: String,
          default: null,
          maxlength: 50,
        },
+   
        teaching: {
          type: String,
          default: null,
          maxlength: 240,
        },
+   
        practice: {
          type: String,
          default: null,
          maxlength: 300,
        },
+   
        reflection: {
          type: String,
          default: null,
          maxlength: 300,
        },
+   
        next_step: {
          type: String,
          default: null,
          maxlength: 300,
        },
+   
        follow_up_options: {
          type: [String],
          default: [],
          validate: {
-           validator: function (arr) {
+           validator(arr) {
              return Array.isArray(arr) && arr.length <= 3;
            },
            message: 'follow_up_options can contain at most 3 items',
          },
        },
+   
        return_prompt: {
          type: String,
          default: null,
          maxlength: 300,
        },
+   
        timestamp: {
          type: Date,
          default: Date.now,
@@ -177,16 +277,19 @@
          required: true,
          index: true,
        },
+   
        title: {
          type: String,
          default: 'Spiritual Conversation',
          maxlength: 100,
        },
+   
        tradition: {
          type: String,
          default: 'all',
          maxlength: 40,
        },
+   
        messages: [messageSchema],
      },
      {
@@ -215,7 +318,8 @@
      }, 0);
    };
    
-   const Conversation = mongoose.model('Conversation', conversationSchema);
+   const Conversation =
+     mongoose.models.Conversation || mongoose.model('Conversation', conversationSchema);
    
    // ═══════════════════════════════════════════════════════════
    //  PRAYER PLAY LOG (for analytics)
@@ -227,21 +331,25 @@
          ref: 'User',
          default: null,
        },
+   
        prayerKey: {
          type: String,
          required: true,
          maxlength: 120,
        },
+   
        tradition: {
          type: String,
          required: true,
          maxlength: 40,
        },
+   
        ip: {
          type: String,
          default: null,
          maxlength: 100,
        },
+   
        playedAt: {
          type: Date,
          default: Date.now,
@@ -254,6 +362,13 @@
    
    prayerLogSchema.index({ prayerKey: 1, playedAt: -1 });
    
-   const PrayerLog = mongoose.model('PrayerLog', prayerLogSchema);
+   const PrayerLog =
+     mongoose.models.PrayerLog || mongoose.model('PrayerLog', prayerLogSchema);
    
-   module.exports = { connectDB, User, Conversation, PrayerLog };
+   module.exports = {
+     connectDB,
+     User,
+     PendingUserVerification,
+     Conversation,
+     PrayerLog,
+   };

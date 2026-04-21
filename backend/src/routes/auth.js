@@ -7,14 +7,22 @@
    const router = express.Router();
    const bcrypt = require('bcryptjs');
    const jwt = require('jsonwebtoken');
+   const crypto = require('crypto');
    const { body, validationResult } = require('express-validator');
    const passport = require('../config/passport');
    
    const { requireAuth } = require('../middleware/auth');
-   const User = require('../models/User');
-   const Conversation = require('../models/Conversation');
+   const {
+     User,
+     PendingUserVerification,
+     Conversation,
+   } = require('../models');
+   const { sendVerificationOtp } = require('../services/emailService');
    
    const FREE_DAILY_LIMIT = 5;
+   const OTP_TTL_MINUTES = 10;
+   const MAX_OTP_ATTEMPTS = 5;
+   const MAX_RESEND_COUNT = 3;
    
    function signToken(userId) {
      if (!process.env.JWT_SECRET) {
@@ -37,11 +45,22 @@
      }));
    }
    
+   function generateOtp() {
+     return String(crypto.randomInt(100000, 1000000));
+   }
+   
+   function getOtpExpiryDate() {
+     const expiresAt = new Date();
+     expiresAt.setMinutes(expiresAt.getMinutes() + OTP_TTL_MINUTES);
+     return expiresAt;
+   }
+   
    /**
-    * POST /api/auth/signup
+    * POST /api/auth/signup/start
+    * Validate input, create/update pending verification, send OTP email
     */
    router.post(
-     '/signup',
+     '/signup/start',
      [
        body('name')
          .trim()
@@ -75,19 +94,119 @@
          const email = req.body.email.trim().toLowerCase();
          const password = req.body.password;
    
-         const existing = await User.findOne({ email }).select('_id');
-         if (existing) {
+         const existingUser = await User.findOne({ email }).select('_id');
+         if (existingUser) {
            return res.status(409).json({ error: 'Email already registered' });
          }
    
+         const otp = generateOtp();
          const passwordHash = await bcrypt.hash(password, 12);
+         const otpHash = await bcrypt.hash(otp, 10);
+         const otpExpiresAt = getOtpExpiryDate();
+   
+         await PendingUserVerification.findOneAndUpdate(
+           { email },
+           {
+             name,
+             email,
+             passwordHash,
+             otpHash,
+             otpExpiresAt,
+             attempts: 0,
+             resendCount: 0,
+           },
+           {
+             upsert: true,
+             new: true,
+             setDefaultsOnInsert: true,
+           }
+         );
+   
+         await sendVerificationOtp(email, otp, name);
+   
+         return res.status(200).json({
+           message: 'Verification code sent to your email',
+           email,
+         });
+       } catch (err) {
+         return next(err);
+       }
+     }
+   );
+   
+   /**
+    * POST /api/auth/signup/verify
+    * Verify OTP, create real user, issue token
+    */
+   router.post(
+     '/signup/verify',
+     [
+       body('email')
+         .trim()
+         .isEmail()
+         .withMessage('Invalid email')
+         .normalizeEmail(),
+   
+       body('otp')
+         .trim()
+         .isLength({ min: 6, max: 6 })
+         .withMessage('OTP must be 6 digits')
+         .isNumeric()
+         .withMessage('OTP must be numeric'),
+     ],
+     async (req, res, next) => {
+       try {
+         const errors = validationResult(req);
+         if (!errors.isEmpty()) {
+           return res.status(400).json({ errors: formatValidationErrors(errors) });
+         }
+   
+         const email = req.body.email.trim().toLowerCase();
+         const otp = req.body.otp.trim();
+   
+         const pending = await PendingUserVerification.findOne({ email })
+           .select('+passwordHash +otpHash');
+   
+         if (!pending) {
+           return res.status(400).json({ error: 'No pending verification found' });
+         }
+   
+         if (pending.otpExpiresAt < new Date()) {
+           await PendingUserVerification.deleteOne({ _id: pending._id });
+           return res.status(400).json({ error: 'OTP expired. Please sign up again.' });
+         }
+   
+         if (pending.attempts >= MAX_OTP_ATTEMPTS) {
+           await PendingUserVerification.deleteOne({ _id: pending._id });
+           return res.status(429).json({
+             error: 'Too many invalid attempts. Please sign up again.',
+           });
+         }
+   
+         const validOtp = await bcrypt.compare(otp, pending.otpHash);
+         if (!validOtp) {
+           pending.attempts += 1;
+           await pending.save();
+           return res.status(401).json({ error: 'Invalid verification code' });
+         }
+   
+         const existingUser = await User.findOne({ email }).select('_id');
+         if (existingUser) {
+           await PendingUserVerification.deleteOne({ _id: pending._id });
+           return res.status(409).json({ error: 'Email already registered' });
+         }
    
          const user = await User.create({
-           name,
-           email,
-           passwordHash,
+           name: pending.name,
+           email: pending.email,
+           passwordHash: pending.passwordHash,
+           authProvider: 'local',
+           emailVerified: true,
            plan: 'free',
+           lastLoginAt: new Date(),
          });
+   
+         await PendingUserVerification.deleteOne({ _id: pending._id });
    
          const token = signToken(user._id);
    
@@ -100,6 +219,56 @@
              plan: user.plan,
              remainingToday: FREE_DAILY_LIMIT,
            },
+         });
+       } catch (err) {
+         return next(err);
+       }
+     }
+   );
+   
+   /**
+    * POST /api/auth/signup/resend-otp
+    * Resend a fresh OTP for pending signup
+    */
+   router.post(
+     '/signup/resend-otp',
+     [
+       body('email')
+         .trim()
+         .isEmail()
+         .withMessage('Invalid email')
+         .normalizeEmail(),
+     ],
+     async (req, res, next) => {
+       try {
+         const errors = validationResult(req);
+         if (!errors.isEmpty()) {
+           return res.status(400).json({ errors: formatValidationErrors(errors) });
+         }
+   
+         const email = req.body.email.trim().toLowerCase();
+   
+         const pending = await PendingUserVerification.findOne({ email });
+         if (!pending) {
+           return res.status(404).json({ error: 'No pending verification found' });
+         }
+   
+         if (pending.resendCount >= MAX_RESEND_COUNT) {
+           return res.status(429).json({ error: 'Too many resend requests' });
+         }
+   
+         const otp = generateOtp();
+   
+         pending.otpHash = await bcrypt.hash(otp, 10);
+         pending.otpExpiresAt = getOtpExpiryDate();
+         pending.attempts = 0;
+         pending.resendCount += 1;
+   
+         await pending.save();
+         await sendVerificationOtp(email, otp, pending.name);
+   
+         return res.json({
+           message: 'A new verification code has been sent',
          });
        } catch (err) {
          return next(err);
@@ -136,6 +305,12 @@
          const user = await User.findOne({ email }).select('+passwordHash');
          if (!user || !user.passwordHash) {
            return res.status(401).json({ error: 'Invalid credentials' });
+         }
+   
+         if (user.authProvider === 'local' && user.emailVerified !== true) {
+           return res.status(403).json({
+             error: 'Please verify your email before logging in',
+           });
          }
    
          const valid = await bcrypt.compare(password, user.passwordHash);
@@ -200,6 +375,8 @@
            createdAt: user.createdAt,
            preferredTradition: user.preferredTradition,
            preferredLanguage: user.preferredLanguage,
+           emailVerified: user.emailVerified,
+           authProvider: user.authProvider,
          },
        });
      } catch (err) {
@@ -232,6 +409,12 @@
      async (req, res) => {
        try {
          req.user.lastLoginAt = new Date();
+         req.user.emailVerified = true;
+   
+         if (!req.user.authProvider) {
+           req.user.authProvider = 'google';
+         }
+   
          await req.user.save();
    
          const token = signToken(req.user._id);

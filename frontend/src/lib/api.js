@@ -3,11 +3,13 @@
    File: frontend/src/lib/api.js
    ============================================================ */
 
-// In dev, use same-origin `/api` so Vite proxies to the backend (vite.config.js).
+// In dev, use same-origin `/api` so Vite proxies to the backend.
 // Set VITE_API_URL when the API lives elsewhere (e.g. production).
 const BASE_URL =
   import.meta.env.VITE_API_URL ||
-  (import.meta.env.DEV ? '/api' : 'http://localhost:3001/api');
+  (import.meta.env.DEV ? '/api' : 'https://soulgpt-production.up.railway.app/api');
+
+const TOKEN_KEY = 'soulgpt_token';
 
 class ApiError extends Error {
   constructor(message, status, data = null) {
@@ -23,23 +25,48 @@ class ApiError extends Error {
 
 class ApiClient {
   constructor() {
-    this.token = localStorage.getItem('soulgpt_token') || null;
+    this.token = localStorage.getItem(TOKEN_KEY) || null;
   }
 
   setToken(token) {
-    this.token = token;
-    if (token) localStorage.setItem('soulgpt_token', token);
-    else localStorage.removeItem('soulgpt_token');
+    this.token = token || null;
+
+    if (this.token) {
+      localStorage.setItem(TOKEN_KEY, this.token);
+    } else {
+      localStorage.removeItem(TOKEN_KEY);
+    }
+  }
+
+  getToken() {
+    if (!this.token) {
+      this.token = localStorage.getItem(TOKEN_KEY) || null;
+    }
+    return this.token;
+  }
+
+  getBaseUrl() {
+    return BASE_URL;
   }
 
   _headers(extra = {}) {
-    const h = { 'Content-Type': 'application/json', ...extra };
-    if (this.token) h.Authorization = `Bearer ${this.token}`;
-    return h;
+    const headers = {
+      'Content-Type': 'application/json',
+      ...extra,
+    };
+
+    const token = this.getToken();
+    if (token) {
+      headers.Authorization = `Bearer ${token}`;
+    }
+
+    return headers;
   }
 
   _errorMessage(body, status) {
-    if (!body || typeof body !== 'object') return `HTTP ${status}`;
+    if (!body || typeof body !== 'object') {
+      return `HTTP ${status}`;
+    }
 
     const first =
       body.message ??
@@ -49,7 +76,7 @@ class ApiClient {
 
     if (typeof first === 'number') return String(first);
     if (typeof first === 'string') return first;
-    if (first != null && typeof first === 'object' && typeof first.message === 'string') {
+    if (first && typeof first === 'object' && typeof first.message === 'string') {
       return first.message;
     }
 
@@ -59,7 +86,9 @@ class ApiClient {
   async _parseResponseBody(res) {
     const raw = await res.text();
 
-    if (!raw) return null;
+    if (!raw) {
+      return null;
+    }
 
     try {
       return JSON.parse(raw);
@@ -73,6 +102,10 @@ class ApiClient {
     const body = await this._parseResponseBody(res);
     const message = this._errorMessage(body, status);
 
+    if (status === 401) {
+      this.setToken(null);
+    }
+
     throw new ApiError(message, status, body);
   }
 
@@ -83,31 +116,66 @@ class ApiClient {
       body: JSON.stringify(body),
     });
 
-    if (!res.ok) await this._throwIfNotOk(res);
+    if (!res.ok) {
+      await this._throwIfNotOk(res);
+    }
 
     return this._parseResponseBody(res);
   }
 
   async _get(path) {
     const res = await fetch(`${BASE_URL}${path}`, {
+      method: 'GET',
       headers: this._headers(),
     });
 
-    if (!res.ok) await this._throwIfNotOk(res);
+    if (!res.ok) {
+      await this._throwIfNotOk(res);
+    }
+
+    return this._parseResponseBody(res);
+  }
+
+  async _delete(path) {
+    const res = await fetch(`${BASE_URL}${path}`, {
+      method: 'DELETE',
+      headers: this._headers(),
+    });
+
+    if (!res.ok) {
+      await this._throwIfNotOk(res);
+    }
 
     return this._parseResponseBody(res);
   }
 
   // ── Auth ──────────────────────────────────────────────
-  async signup(name, email, password) {
-    const data = await this._post('/auth/signup', { name, email, password });
-    if (data?.token) this.setToken(data.token);
+
+  async startSignup(name, email, password) {
+    return this._post('/auth/signup/start', { name, email, password });
+  }
+
+  async verifySignup(email, otp) {
+    const data = await this._post('/auth/signup/verify', { email, otp });
+
+    if (data?.token) {
+      this.setToken(data.token);
+    }
+
     return data;
+  }
+
+  async resendSignupOtp(email) {
+    return this._post('/auth/signup/resend-otp', { email });
   }
 
   async login(email, password) {
     const data = await this._post('/auth/login', { email, password });
-    if (data?.token) this.setToken(data.token);
+
+    if (data?.token) {
+      this.setToken(data.token);
+    }
+
     return data;
   }
 
@@ -120,12 +188,13 @@ class ApiClient {
   }
 
   // ── Chat ──────────────────────────────────────────────
+
   /**
    * Send a message and receive AI response.
-   * @param {string} message   - User's message
-   * @param {string} tradition - Filter: 'all' | 'hindu' | 'islam' | ...
-   * @param {string} language  - 'en' | 'hi' | 'gu'
-   * @param {string|null} convId - Conversation ID (null = new conversation)
+   * @param {string} message
+   * @param {string} tradition
+   * @param {string} language
+   * @param {string|null} convId
    */
   async sendMessage(message, tradition = 'all', language = 'en', convId = null) {
     return this._post('/chat/message', {
@@ -137,6 +206,7 @@ class ApiClient {
   }
 
   // ── Conversations ─────────────────────────────────────
+
   async getConversations() {
     return this._get('/conversations');
   }
@@ -146,27 +216,22 @@ class ApiClient {
   }
 
   async deleteConversation(id) {
-    const res = await fetch(`${BASE_URL}/conversations/${id}`, {
-      method: 'DELETE',
-      headers: this._headers(),
-    });
-
-    if (!res.ok) await this._throwIfNotOk(res);
-
-    return this._parseResponseBody(res);
+    return this._delete(`/conversations/${id}`);
   }
 
   // ── Prayers / Audio ───────────────────────────────────
+
   async getPrayers(tradition = null) {
-    const q = tradition ? `?tradition=${tradition}` : '';
+    const q = tradition ? `?tradition=${encodeURIComponent(tradition)}` : '';
     return this._get(`/prayers${q}`);
   }
 
   async getPrayerStream(prayerKey) {
-    return this._get(`/prayers/${prayerKey}/stream`);
+    return this._get(`/prayers/${encodeURIComponent(prayerKey)}/stream`);
   }
 
   // ── Subscription ──────────────────────────────────────
+
   async createCheckoutSession(plan) {
     return this._post('/subscription/checkout', { plan });
   }
@@ -176,5 +241,5 @@ class ApiClient {
   }
 }
 
-export { ApiError };
+export { ApiError, TOKEN_KEY, BASE_URL };
 export const api = new ApiClient();
