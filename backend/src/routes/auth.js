@@ -57,7 +57,6 @@
    
    /**
     * POST /api/auth/signup/start
-    * Validate input, create/update pending verification, send OTP email
     */
    router.post(
      '/signup/start',
@@ -94,15 +93,21 @@
          const email = req.body.email.trim().toLowerCase();
          const password = req.body.password;
    
+         console.log('Signup start hit for:', email);
+   
          const existingUser = await User.findOne({ email }).select('_id');
          if (existingUser) {
            return res.status(409).json({ error: 'Email already registered' });
          }
    
          const otp = generateOtp();
+         console.log('OTP generated');
+   
          const passwordHash = await bcrypt.hash(password, 12);
          const otpHash = await bcrypt.hash(otp, 10);
          const otpExpiresAt = getOtpExpiryDate();
+   
+         console.log('Before saving pending verification');
    
          await PendingUserVerification.findOneAndUpdate(
            { email },
@@ -122,13 +127,18 @@
            }
          );
    
+         console.log('Before sending verification email');
+   
          await sendVerificationOtp(email, otp, name);
+   
+         console.log('After sending verification email');
    
          return res.status(200).json({
            message: 'Verification code sent to your email',
            email,
          });
        } catch (err) {
+         console.error('Signup start error:', err);
          return next(err);
        }
      }
@@ -136,7 +146,6 @@
    
    /**
     * POST /api/auth/signup/verify
-    * Verify OTP, create real user, issue token
     */
    router.post(
      '/signup/verify',
@@ -228,7 +237,6 @@
    
    /**
     * POST /api/auth/signup/resend-otp
-    * Resend a fresh OTP for pending signup
     */
    router.post(
      '/signup/resend-otp',
@@ -386,7 +394,6 @@
    
    /**
     * GET /api/auth/google
-    * Start Google login
     */
    router.get(
      '/google',
@@ -398,7 +405,6 @@
    
    /**
     * GET /api/auth/google/callback
-    * Google login callback
     */
    router.get(
      '/google/callback',
@@ -408,14 +414,6 @@
      }),
      async (req, res) => {
        try {
-         console.log('Google callback hit');
-         console.log('FRONTEND_URL:', process.env.FRONTEND_URL);
-         console.log('User exists:', Boolean(req.user));
-   
-         if (!req.user) {
-           throw new Error('req.user is missing in Google callback');
-         }
-   
          req.user.lastLoginAt = new Date();
          req.user.emailVerified = true;
    
@@ -429,8 +427,6 @@
          const frontendUrl = (process.env.FRONTEND_URL || 'http://localhost:5173').trim();
          const redirectUrl = new URL('/auth-success', frontendUrl);
          redirectUrl.searchParams.set('token', token);
-   
-         console.log('Google redirect target:', redirectUrl.toString());
    
          return res.redirect(redirectUrl.toString());
        } catch (err) {
