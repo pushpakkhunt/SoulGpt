@@ -1,6 +1,7 @@
 {
-    "rewrites": [
-      { "source": "/app", "destination": "/app.html" },
-      { "source": "/app.html", "destination": "/app.html" }
-    ]
-  }
+  "rewrites": [
+    { "source": "/app", "destination": "/app.html" },
+    { "source": "/app.html", "destination": "/app.html" },
+    { "source": "/auth-success", "destination": "/app.html" }
+  ]
+}

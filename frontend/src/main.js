@@ -8,7 +8,7 @@
    import { Chat } from './components/Chat.js';
    import { AudioPlayer } from './components/AudioPlayer.js';
    import { AuthModal } from './components/AuthModal.js';
-   import { api, ApiError } from './lib/api.js';
+   import { api, ApiError, TOKEN_KEY } from './lib/api.js';
    import { detectIntent } from './lib/utils.js';
    
    // ── Known prayers data (fallback only) ──────────────────────
@@ -46,10 +46,10 @@
      }
    
      try {
-       localStorage.setItem('token', token);
+       localStorage.setItem(TOKEN_KEY, token);
    
-       // Clean the URL so token is not left visible in the address bar
-       window.history.replaceState({}, '', '/');
+       // Clean URL and move user into app shell
+       window.history.replaceState({}, '', '/app');
    
        return true;
      } catch (err) {
@@ -228,7 +228,6 @@
            } catch (err) {
              console.error('Failed to fetch prayer stream:', err);
    
-             // Fallback: simulate only if backend stream fetch fails
              player.open({
                title: prayer.title,
                tradition: prayer.tradition,
